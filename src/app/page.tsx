@@ -150,12 +150,6 @@ const MOCK_PUZZLE = {
       lat: 51.4816, lng: -3.1791,
       questions: [
         {
-          question: "Cardiff is the birthplace of which much-loved 20th-century children's author, honoured by Roald Dahl Plass at Cardiff Bay?",
-          options: ["Beatrix Potter", "Roald Dahl", "Enid Blyton", "C.S. Lewis"],
-          correctIndex: 1,
-          explanation: "Dahl was born in Cardiff in 1916 to Norwegian parents. The sunken oval plaza at Cardiff Bay is named after him.",
-        },
-        {
           question: "The Welsh national anthem, 'Hen Wlad Fy Nhadau', translates to…",
           options: ["Land of My Fathers", "Mountains of Heroes", "Country of Song", "Old and Free"],
           correctIndex: 0,
@@ -167,31 +161,11 @@ const MOCK_PUZZLE = {
           correctIndex: 1,
           explanation: "William Burges turned Cardiff Castle's Norman shell into a riot of medievalism in the 1860s — gilded ceilings, animal-themed rooms, the lot. Bute was reckoned the world's richest man at the time.",
         },
-      ],
-    },
-    {
-      name: "Plymouth",
-      country: "England",
-      flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-      lat: 50.3755, lng: -4.1427,
-      questions: [
         {
-          question: "Which famous ship sailed from Plymouth in 1620?",
-          options: ["HMS Victory", "Mayflower", "Endeavour", "Cutty Sark"],
+          question: "Cardiff is the birthplace of children's author Roald Dahl, who wrote which 1964 book about a sweet-toothed boy in a magical factory?",
+          options: ["James and the Giant Peach", "Charlie and the Chocolate Factory", "The BFG", "Matilda"],
           correctIndex: 1,
-          explanation: "The Mayflower carried 102 Pilgrim settlers from Plymouth to what is now Massachusetts — they named their landing point Plymouth Rock after the English port.",
-        },
-        {
-          question: "Sir Francis Drake is said to have insisted on finishing which game on Plymouth Hoe before sailing against the Spanish Armada in 1588?",
-          options: ["Cricket", "Bowls", "Backgammon", "Chess"],
-          correctIndex: 1,
-          explanation: "Legend has it Drake calmly finished his game of bowls before commanding the English fleet against the Armada. Most likely apocryphal — the tide simply hadn't turned yet.",
-        },
-        {
-          question: "Charles Darwin's HMS Beagle, the voyage that inspired On the Origin of Species, set sail from which English port in December 1831?",
-          options: ["London", "Plymouth", "Bristol", "Portsmouth"],
-          correctIndex: 1,
-          explanation: "The Beagle departed Devonport (Plymouth) on 27 Dec 1831 with the 22-year-old Darwin aboard as the ship's naturalist. Five years and a continent of fossils later, evolution was on its way.",
+          explanation: "Dahl was born in Cardiff in 1916; the city's Roald Dahl Plass at the Bay honours him. Charlie and the Chocolate Factory was published in 1964 and has been adapted for stage and screen many times.",
         },
       ],
     },
@@ -200,8 +174,26 @@ const MOCK_PUZZLE = {
       country: "England",
       flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
       lat: 50.0657, lng: -5.7132,
-      // Destination — no question, you just arrive.
-      questions: [],
+      questions: [
+        {
+          question: "Land's End is the south-westernmost point of mainland Britain. What's the traditional north-eastern endpoint of the LEJOG long-distance journey?",
+          options: ["Cape Wrath", "Dunnet Head", "John o' Groats", "Duncansby Head"],
+          correctIndex: 2,
+          explanation: "John o' Groats has been the symbolic NE end of Britain since the 19th century, even though Dunnet Head is technically further north. The classic LEJOG cycle / walk is roughly 874 miles by road.",
+        },
+        {
+          question: "The first Atlantic Ocean island visible from Land's End on a clear day, about 28 miles offshore, is part of which archipelago?",
+          options: ["The Channel Islands", "The Hebrides", "The Isles of Scilly", "Lundy"],
+          correctIndex: 2,
+          explanation: "On a good day you can see Tresco and the rest of the Isles of Scilly from the cliffs at Land's End — the granite outcrops are a popular destination by helicopter and ferry from Penzance.",
+        },
+        {
+          question: "Cornish folklore claims a sunken kingdom — drowned in a single night and now lying off the coast at Land's End — by what name?",
+          options: ["Lyonesse", "Avalon", "Cantref Gwaelod", "Atlantis"],
+          correctIndex: 0,
+          explanation: "Lyonesse appears in Arthurian legend as the home of Sir Tristan, supposedly submerged on 11 November 1099. The Seven Stones reef between Land's End and Scilly is sometimes pointed to as its remains.",
+        },
+      ],
     },
   ] as DailyCity[],
 }
@@ -1220,8 +1212,23 @@ function QuestionScreen({
             revealed ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
         >
-          <div className="rounded-2xl border px-4 py-2.5 sm:px-5 sm:py-3 backdrop-blur-md bg-teal-900/95 border-teal-700/60">
-            <p className="text-lg sm:text-xl leading-relaxed text-center text-teal-50">
+          <div
+            className={`rounded-2xl border px-4 py-2.5 sm:px-5 sm:py-3 backdrop-blur-md transition-colors ${
+              cityIndex === totalCities - 1
+                ? "bg-amber-500/95 border-amber-300 shadow-lg shadow-amber-500/30"
+                : "bg-teal-900/95 border-teal-700/60"
+            }`}
+          >
+            {cityIndex === totalCities - 1 && (
+              <p className="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-950 text-center mb-1">
+                Final question
+              </p>
+            )}
+            <p
+              className={`text-lg sm:text-xl leading-relaxed text-center ${
+                cityIndex === totalCities - 1 ? "text-amber-950 font-semibold" : "text-teal-50"
+              }`}
+            >
               {question.question}
             </p>
           </div>
@@ -1274,7 +1281,7 @@ function QuestionScreen({
               disabled={!revealed}
               className="px-5 py-2 rounded-xl text-sm font-semibold transition bg-amber-400 text-amber-950 hover:bg-amber-300"
             >
-              Next →
+              {cityIndex === totalCities - 1 ? "Finish 🏁" : "Next →"}
             </button>
           </div>
         </div>
