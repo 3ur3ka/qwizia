@@ -41,22 +41,22 @@ const MOCK_PUZZLE = {
       lat: 55.9533, lng: -3.1883,
       questions: [
         {
-          question: "Edinburgh's Royal Mile connects the Castle to which other landmark?",
-          options: ["Holyrood Palace", "Arthur's Seat", "Calton Hill", "Forth Bridge"],
-          correctIndex: 0,
-          explanation: "The Royal Mile runs through the Old Town from Edinburgh Castle down to the Palace of Holyroodhouse.",
-        },
-        {
-          question: "Which volcanic hill rises over Edinburgh's Holyrood Park?",
-          options: ["Calton Hill", "Arthur's Seat", "Castle Rock", "Pentland Hill"],
+          question: "Danny Boyle's 1996 cult film Trainspotting is set largely in which Edinburgh district?",
+          options: ["Stockbridge", "Leith", "New Town", "Morningside"],
           correctIndex: 1,
-          explanation: "Arthur's Seat is the main peak of an extinct volcanic system that towers above the city at 251 m.",
+          explanation: "Renton, Sick Boy, Begbie & co. tear through Leith — the rough-edged dockside neighbourhood, captured in Irvine Welsh's novel and Boyle's adaptation.",
         },
         {
-          question: "Edinburgh hosts the world's largest annual arts festival — what's it called?",
-          options: ["Edinburgh Fringe", "Hogmanay", "Tattoo", "Burns Night"],
-          correctIndex: 0,
-          explanation: "The Edinburgh Festival Fringe began in 1947 and is the largest performing-arts festival on Earth.",
+          question: "J.K. Rowling drafted early Harry Potter chapters in cafés around Edinburgh. The city's medieval Old Town is widely cited as the inspiration for which Potter location?",
+          options: ["Diagon Alley", "Hogwarts", "The Leaky Cauldron", "Privet Drive"],
+          correctIndex: 1,
+          explanation: "The Elephant House and Spoon café both lay claim to early-Potter manuscripts. Edinburgh's Gothic spires and George Heriot's School are widely seen as Hogwarts visual inspirations.",
+        },
+        {
+          question: "Greyfriars Bobby, the loyal Skye Terrier whose statue stands in the Old Town, sat by his master's grave for how many years?",
+          options: ["3", "7", "14", "21"],
+          correctIndex: 2,
+          explanation: "Bobby spent 14 years (1858–1872) guarding John Gray's grave in Greyfriars Kirkyard. The story inspired books and a 1961 Disney film.",
         },
       ],
     },
@@ -67,22 +67,22 @@ const MOCK_PUZZLE = {
       lat: 54.9783, lng: -1.6178,
       questions: [
         {
-          question: "Which iconic bridge spans the River Tyne in Newcastle?",
-          options: ["Tower Bridge", "Tyne Bridge", "Severn Bridge", "Forth Bridge"],
-          correctIndex: 1,
-          explanation: "The Tyne Bridge, opened in 1928, is the most recognisable landmark of Newcastle and Gateshead.",
+          question: "Which gritty 1971 British crime film, with Michael Caine playing a London gangster avenging his brother, is set across Newcastle and Gateshead?",
+          options: ["Get Carter", "The Long Good Friday", "The Italian Job", "Mona Lisa"],
+          correctIndex: 0,
+          explanation: "Get Carter, directed by Mike Hodges, made dramatic use of Tyneside locations including the now-demolished Trinity Square multi-storey car park.",
         },
         {
-          question: "Locals from Newcastle are commonly known as…",
-          options: ["Scousers", "Mackems", "Geordies", "Brummies"],
-          correctIndex: 2,
-          explanation: "'Geordie' refers both to the people of Tyneside and to their distinctive dialect.",
+          question: "Newcastle's eastern suburb of Wallsend takes its name from being the eastern terminus of which Roman structure?",
+          options: ["Antonine Wall", "Hadrian's Wall", "Offa's Dyke", "Watling Street"],
+          correctIndex: 1,
+          explanation: "Segedunum fort at Wallsend was the very end of Hadrian's Wall (begun AD 122) — the empire's northern frontier ran 73 miles west to the Solway Firth.",
         },
         {
-          question: "Which Roman wall ran near Newcastle, marking the empire's northern frontier?",
-          options: ["Antonine Wall", "Hadrian's Wall", "Offa's Dyke", "Wat's Dyke"],
+          question: "Which Newcastle-born singer-songwriter, lead of The Police, took his stage name from a striped jumper?",
+          options: ["Bryan Ferry", "Sting", "Mark Knopfler", "Brian Johnson"],
           correctIndex: 1,
-          explanation: "Hadrian's Wall, begun AD 122, ran from Wallsend (in Newcastle) west to the Solway Firth.",
+          explanation: "Gordon Sumner, born in Wallsend in 1951, was nicknamed 'Sting' as a young jazz bassist for a yellow-and-black striped jumper.",
         },
       ],
     },
@@ -93,22 +93,22 @@ const MOCK_PUZZLE = {
       lat: 53.4808, lng: -2.2426,
       questions: [
         {
-          question: "Manchester's industrial revolution earned it which nickname?",
-          options: ["Cottonopolis", "Steel City", "Brick Lane", "Smoke Town"],
-          correctIndex: 0,
-          explanation: "Manchester was nicknamed 'Cottonopolis' in the 19th century for its dominance of cotton processing.",
-        },
-        {
-          question: "Manchester is home to two famous Premier League football clubs — and which other top-flight rival?",
-          options: ["Two — Man United and Man City", "Three", "Just one", "Four"],
-          correctIndex: 0,
-          explanation: "Manchester United and Manchester City are the city's only two Premier League clubs.",
-        },
-        {
-          question: "The 1761 Bridgewater Canal kicked off the canal age and connected Manchester to where?",
-          options: ["Liverpool", "Worsley coal mines", "Leeds", "Birmingham"],
+          question: "Manchester's Industrial Revolution heritage includes the world's first…",
+          options: ["Public library", "Inter-city passenger railway", "Football league", "Department store"],
           correctIndex: 1,
-          explanation: "It was built to bring coal from the Duke of Bridgewater's Worsley mines into central Manchester.",
+          explanation: "The Liverpool & Manchester Railway opened in 1830 — the first inter-city passenger line. The opening was overshadowed when MP William Huskisson became the railway's first fatality.",
+        },
+        {
+          question: "Joy Division, New Order and Happy Mondays all called which legendary Manchester nightclub home in the 1980s and 90s?",
+          options: ["The Hacienda", "The Cavern", "Eric's", "Heaven"],
+          correctIndex: 0,
+          explanation: "Tony Wilson's Factory Records ran the Haçienda from 1982 to 1997 — the heart of the 'Madchester' scene that gave us the Stone Roses, the Mondays and acid house.",
+        },
+        {
+          question: "The Gallagher brothers' band Oasis emerged in 1991 from which south Manchester suburb?",
+          options: ["Burnage", "Salford", "Stretford", "Wythenshawe"],
+          correctIndex: 0,
+          explanation: "Liam and Noel Gallagher grew up in Burnage, where Oasis was originally formed as 'The Rain' before Liam joined and they renamed.",
         },
       ],
     },
@@ -119,22 +119,27 @@ const MOCK_PUZZLE = {
       lat: 52.4862, lng: -1.8904,
       questions: [
         {
-          question: "Birmingham has more of these than any other European city:",
-          options: ["Cathedrals", "Canals", "Castles", "Museums"],
+          question: "Birmingham famously has more miles of canals than which other city?",
+          options: ["Amsterdam", "Venice", "Bruges", "Stockholm"],
           correctIndex: 1,
-          explanation: "Birmingham has 35 miles of canals — more than Venice — built during its industrial heyday.",
+          explanation: "Birmingham has roughly 35 miles of canals, more than Venice's ~26 — they were the M-roads of the Industrial Revolution.",
         },
         {
-          question: "Which BBC drama set in 1920s Birmingham follows a fictional gang of the same name?",
-          options: ["Line of Duty", "Peaky Blinders", "Happy Valley", "This Is England"],
-          correctIndex: 1,
-          explanation: "Peaky Blinders, created by Steven Knight, is set in post-WWI Small Heath, Birmingham.",
-        },
-        {
-          question: "People from Birmingham are commonly known as…",
-          options: ["Brummies", "Mancs", "Cockneys", "Scousers"],
+          question: "Black Sabbath, often credited with inventing heavy metal, formed in 1968 in which Birmingham suburb?",
+          options: ["Aston", "Edgbaston", "Smethwick", "Sparkhill"],
           correctIndex: 0,
-          explanation: "'Brummie' comes from the city's old name 'Brummagem', a contraction of Birmingham.",
+          explanation: "Tony Iommi, Geezer Butler, Bill Ward and Ozzy Osbourne all grew up in Aston, north Birmingham. The band's dark sound is often traced back to the area's heavy industry.",
+        },
+        {
+          question: "J.R.R. Tolkien spent his childhood in Birmingham. Which two real local landmarks are widely cited as the inspiration for the 'Two Towers'?",
+          options: [
+            "The Bull Ring + Selfridges",
+            "Perrott's Folly + Edgbaston Waterworks Tower",
+            "The Rotunda + Library of Birmingham",
+            "Cadbury chimneys + Aston Hall",
+          ],
+          correctIndex: 1,
+          explanation: "Both towers are visible from where Tolkien lived as a boy in Edgbaston — Perrott's Folly is an 18th-century follies; the waterworks tower is Victorian Gothic.",
         },
       ],
     },
@@ -145,22 +150,22 @@ const MOCK_PUZZLE = {
       lat: 51.4816, lng: -3.1791,
       questions: [
         {
-          question: "Which long-running BBC series is filmed largely in Cardiff?",
-          options: ["Sherlock", "Doctor Who", "Peaky Blinders", "Line of Duty"],
+          question: "Cardiff is the birthplace of which much-loved 20th-century children's author, honoured by Roald Dahl Plass at Cardiff Bay?",
+          options: ["Beatrix Potter", "Roald Dahl", "Enid Blyton", "C.S. Lewis"],
           correctIndex: 1,
-          explanation: "Doctor Who has been produced at Roath Lock Studios in Cardiff since the 2005 revival.",
+          explanation: "Dahl was born in Cardiff in 1916 to Norwegian parents. The sunken oval plaza at Cardiff Bay is named after him.",
         },
         {
-          question: "What colour is the dragon on the Welsh flag?",
-          options: ["Green", "Red", "Black", "Gold"],
-          correctIndex: 1,
-          explanation: "Y Ddraig Goch — 'the red dragon' — has been associated with Wales since at least the 7th century.",
-        },
-        {
-          question: "Cardiff's main rugby stadium, home of Welsh internationals, is currently called the…",
-          options: ["Principality Stadium", "Aviva Stadium", "Twickenham", "Murrayfield"],
+          question: "The Welsh national anthem, 'Hen Wlad Fy Nhadau', translates to…",
+          options: ["Land of My Fathers", "Mountains of Heroes", "Country of Song", "Old and Free"],
           correctIndex: 0,
-          explanation: "Built as the Millennium Stadium for Rugby World Cup 1999, renamed Principality Stadium in 2016.",
+          explanation: "Composed by James and Evan James in 1856, 'Land of My Fathers' is one of the world's oldest national anthems still in use.",
+        },
+        {
+          question: "Cardiff Castle was remodelled in extravagant Victorian Gothic style for the 3rd Marquess of Bute by which architect?",
+          options: ["Augustus Pugin", "William Burges", "Edwin Lutyens", "George Gilbert Scott"],
+          correctIndex: 1,
+          explanation: "William Burges turned Cardiff Castle's Norman shell into a riot of medievalism in the 1860s — gilded ceilings, animal-themed rooms, the lot. Bute was reckoned the world's richest man at the time.",
         },
       ],
     },
@@ -174,19 +179,19 @@ const MOCK_PUZZLE = {
           question: "Which famous ship sailed from Plymouth in 1620?",
           options: ["HMS Victory", "Mayflower", "Endeavour", "Cutty Sark"],
           correctIndex: 1,
-          explanation: "The Mayflower carried the Pilgrim Fathers from Plymouth to the New World in September 1620.",
+          explanation: "The Mayflower carried 102 Pilgrim settlers from Plymouth to what is now Massachusetts — they named their landing point Plymouth Rock after the English port.",
         },
         {
-          question: "Sir Francis Drake is said to have insisted on finishing which game on Plymouth Hoe before facing the Spanish Armada in 1588?",
+          question: "Sir Francis Drake is said to have insisted on finishing which game on Plymouth Hoe before sailing against the Spanish Armada in 1588?",
           options: ["Cricket", "Bowls", "Backgammon", "Chess"],
           correctIndex: 1,
-          explanation: "Legend has it Drake calmly finished his game of bowls before sailing to defeat the Armada.",
+          explanation: "Legend has it Drake calmly finished his game of bowls before commanding the English fleet against the Armada. Most likely apocryphal — the tide simply hadn't turned yet.",
         },
         {
-          question: "Captain Cook's first voyage of exploration (1768) departed Plymouth aboard which ship?",
-          options: ["HMS Beagle", "HMS Bounty", "HMS Endeavour", "HMS Resolution"],
-          correctIndex: 2,
-          explanation: "HMS Endeavour took Cook to chart the transit of Venus and the eastern coast of Australia.",
+          question: "Charles Darwin's HMS Beagle, the voyage that inspired On the Origin of Species, set sail from which English port in December 1831?",
+          options: ["London", "Plymouth", "Bristol", "Portsmouth"],
+          correctIndex: 1,
+          explanation: "The Beagle departed Devonport (Plymouth) on 27 Dec 1831 with the 22-year-old Darwin aboard as the ship's naturalist. Five years and a continent of fossils later, evolution was on its way.",
         },
       ],
     },
@@ -364,7 +369,7 @@ function Header({ puzzleNumber, lives }: { puzzleNumber: number; lives: number |
   return (
     <header className="flex items-center justify-between py-2 gap-3">
       <div className="min-w-0">
-        <h1 className="text-xl font-bold tracking-tight text-amber-200">Squizzle Daily</h1>
+        <h1 className="text-xl font-bold tracking-tight text-amber-200">Qwizia Daily</h1>
         <p className="text-xs text-teal-400">#{puzzleNumber} · {date}</p>
       </div>
       {lives !== null ? (
@@ -1508,7 +1513,7 @@ function buildShareText(
   const questionedCities = puzzle.cities.filter(c => c.questions.length > 0)
   const reached = won ? questionedCities.length : Math.max(...attempts.map(a => a.cityIndex), -1) + 1
   return [
-    `Squizzle Daily #${puzzle.puzzleNumber}`,
+    `Qwizia Daily #${puzzle.puzzleNumber}`,
     puzzle.international
       ? `${start.flag} ${start.name} → ${end.name} ${end.flag}`
       : `${start.name} → ${end.name}`,
@@ -1519,7 +1524,7 @@ function buildShareText(
       .filter(({ c }) => c.questions.length > 0)
       .map(({ c, i }) => `${c.name}  ${perCity[i] || "·"}`),
     "",
-    "squizzle.earth/daily",
+    "qwizia.com",
   ].join("\n")
 }
 
