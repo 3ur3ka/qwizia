@@ -41,6 +41,12 @@ const MOCK_PUZZLE = {
       lat: 55.9533, lng: -3.1883,
       questions: [
         {
+          question: "Greyfriars Bobby, the loyal Skye Terrier whose statue stands in the Old Town, sat by his master's grave for how many years?",
+          options: ["3", "7", "14", "21"],
+          correctIndex: 2,
+          explanation: "Bobby spent 14 years (1858–1872) guarding John Gray's grave in Greyfriars Kirkyard. The story inspired books and a 1961 Disney film.",
+        },
+        {
           question: "Danny Boyle's 1996 cult film Trainspotting is set largely in which Edinburgh district?",
           options: ["Stockbridge", "Leith", "New Town", "Morningside"],
           correctIndex: 1,
@@ -51,12 +57,6 @@ const MOCK_PUZZLE = {
           options: ["Diagon Alley", "Hogwarts", "The Leaky Cauldron", "Privet Drive"],
           correctIndex: 1,
           explanation: "The Elephant House and Spoon café both lay claim to early-Potter manuscripts. Edinburgh's Gothic spires and George Heriot's School are widely seen as Hogwarts visual inspirations.",
-        },
-        {
-          question: "Greyfriars Bobby, the loyal Skye Terrier whose statue stands in the Old Town, sat by his master's grave for how many years?",
-          options: ["3", "7", "14", "21"],
-          correctIndex: 2,
-          explanation: "Bobby spent 14 years (1858–1872) guarding John Gray's grave in Greyfriars Kirkyard. The story inspired books and a 1961 Disney film.",
         },
       ],
     },
@@ -84,7 +84,7 @@ const MOCK_PUZZLE = {
           correctIndex: 1,
           explanation: "Gordon Sumner, born in Wallsend in 1951, was nicknamed 'Sting' as a young jazz bassist for a yellow-and-black striped jumper.",
         },
-      ],
+      ], // hardest first: Get Carter (specific film) > Wallsend > Sting
     },
     {
       name: "Manchester",
@@ -92,6 +92,12 @@ const MOCK_PUZZLE = {
       flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
       lat: 53.4808, lng: -2.2426,
       questions: [
+        {
+          question: "The Gallagher brothers' band Oasis emerged in 1991 from which south Manchester suburb?",
+          options: ["Burnage", "Salford", "Stretford", "Wythenshawe"],
+          correctIndex: 0,
+          explanation: "Liam and Noel Gallagher grew up in Burnage, where Oasis was originally formed as 'The Rain' before Liam joined and they renamed.",
+        },
         {
           question: "Manchester's Industrial Revolution heritage includes the world's first…",
           options: ["Public library", "Inter-city passenger railway", "Football league", "Department store"],
@@ -104,13 +110,7 @@ const MOCK_PUZZLE = {
           correctIndex: 0,
           explanation: "Tony Wilson's Factory Records ran the Haçienda from 1982 to 1997 — the heart of the 'Madchester' scene that gave us the Stone Roses, the Mondays and acid house.",
         },
-        {
-          question: "The Gallagher brothers' band Oasis emerged in 1991 from which south Manchester suburb?",
-          options: ["Burnage", "Salford", "Stretford", "Wythenshawe"],
-          correctIndex: 0,
-          explanation: "Liam and Noel Gallagher grew up in Burnage, where Oasis was originally formed as 'The Rain' before Liam joined and they renamed.",
-        },
-      ],
+      ], // hardest first: Burnage suburb > world's first railway > Hacienda
     },
     {
       name: "Birmingham",
@@ -118,18 +118,6 @@ const MOCK_PUZZLE = {
       flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
       lat: 52.4862, lng: -1.8904,
       questions: [
-        {
-          question: "Birmingham famously has more miles of canals than which other city?",
-          options: ["Amsterdam", "Venice", "Bruges", "Stockholm"],
-          correctIndex: 1,
-          explanation: "Birmingham has roughly 35 miles of canals, more than Venice's ~26 — they were the M-roads of the Industrial Revolution.",
-        },
-        {
-          question: "Black Sabbath, often credited with inventing heavy metal, formed in 1968 in which Birmingham suburb?",
-          options: ["Aston", "Edgbaston", "Smethwick", "Sparkhill"],
-          correctIndex: 0,
-          explanation: "Tony Iommi, Geezer Butler, Bill Ward and Ozzy Osbourne all grew up in Aston, north Birmingham. The band's dark sound is often traced back to the area's heavy industry.",
-        },
         {
           question: "J.R.R. Tolkien spent his childhood in Birmingham. Which two real local landmarks are widely cited as the inspiration for the 'Two Towers'?",
           options: [
@@ -141,7 +129,19 @@ const MOCK_PUZZLE = {
           correctIndex: 1,
           explanation: "Both towers are visible from where Tolkien lived as a boy in Edgbaston — Perrott's Folly is an 18th-century follies; the waterworks tower is Victorian Gothic.",
         },
-      ],
+        {
+          question: "Black Sabbath, often credited with inventing heavy metal, formed in 1968 in which Birmingham suburb?",
+          options: ["Aston", "Edgbaston", "Smethwick", "Sparkhill"],
+          correctIndex: 0,
+          explanation: "Tony Iommi, Geezer Butler, Bill Ward and Ozzy Osbourne all grew up in Aston, north Birmingham. The band's dark sound is often traced back to the area's heavy industry.",
+        },
+        {
+          question: "Birmingham famously has more miles of canals than which other city?",
+          options: ["Amsterdam", "Venice", "Bruges", "Stockholm"],
+          correctIndex: 1,
+          explanation: "Birmingham has roughly 35 miles of canals, more than Venice's ~26 — they were the M-roads of the Industrial Revolution.",
+        },
+      ], // hardest first: Tolkien Two Towers > Black Sabbath Aston > canals
     },
     {
       name: "Cardiff",
@@ -150,16 +150,16 @@ const MOCK_PUZZLE = {
       lat: 51.4816, lng: -3.1791,
       questions: [
         {
-          question: "The Welsh national anthem, 'Hen Wlad Fy Nhadau', translates to…",
-          options: ["Land of My Fathers", "Mountains of Heroes", "Country of Song", "Old and Free"],
-          correctIndex: 0,
-          explanation: "Composed by James and Evan James in 1856, 'Land of My Fathers' is one of the world's oldest national anthems still in use.",
-        },
-        {
           question: "Cardiff Castle was remodelled in extravagant Victorian Gothic style for the 3rd Marquess of Bute by which architect?",
           options: ["Augustus Pugin", "William Burges", "Edwin Lutyens", "George Gilbert Scott"],
           correctIndex: 1,
           explanation: "William Burges turned Cardiff Castle's Norman shell into a riot of medievalism in the 1860s — gilded ceilings, animal-themed rooms, the lot. Bute was reckoned the world's richest man at the time.",
+        },
+        {
+          question: "The Welsh national anthem, 'Hen Wlad Fy Nhadau', translates to…",
+          options: ["Land of My Fathers", "Mountains of Heroes", "Country of Song", "Old and Free"],
+          correctIndex: 0,
+          explanation: "Composed by James and Evan James in 1856, 'Land of My Fathers' is one of the world's oldest national anthems still in use.",
         },
         {
           question: "Cardiff is the birthplace of children's author Roald Dahl, who wrote which 1964 book about a sweet-toothed boy in a magical factory?",
@@ -167,7 +167,7 @@ const MOCK_PUZZLE = {
           correctIndex: 1,
           explanation: "Dahl was born in Cardiff in 1916; the city's Roald Dahl Plass at the Bay honours him. Charlie and the Chocolate Factory was published in 1964 and has been adapted for stage and screen many times.",
         },
-      ],
+      ], // hardest first: William Burges (architect) > anthem translation > Dahl
     },
     {
       name: "Land's End",
@@ -176,24 +176,24 @@ const MOCK_PUZZLE = {
       lat: 50.0657, lng: -5.7132,
       questions: [
         {
-          question: "Land's End is the south-westernmost point of mainland Britain. What's the traditional north-eastern endpoint of the LEJOG long-distance journey?",
-          options: ["Cape Wrath", "Dunnet Head", "John o' Groats", "Duncansby Head"],
-          correctIndex: 2,
-          explanation: "John o' Groats has been the symbolic NE end of Britain since the 19th century, even though Dunnet Head is technically further north. The classic LEJOG cycle / walk is roughly 874 miles by road.",
-        },
-        {
-          question: "The first Atlantic Ocean island visible from Land's End on a clear day, about 28 miles offshore, is part of which archipelago?",
-          options: ["The Channel Islands", "The Hebrides", "The Isles of Scilly", "Lundy"],
-          correctIndex: 2,
-          explanation: "On a good day you can see Tresco and the rest of the Isles of Scilly from the cliffs at Land's End — the granite outcrops are a popular destination by helicopter and ferry from Penzance.",
-        },
-        {
           question: "Cornish folklore claims a sunken kingdom — drowned in a single night and now lying off the coast at Land's End — by what name?",
           options: ["Lyonesse", "Avalon", "Cantref Gwaelod", "Atlantis"],
           correctIndex: 0,
           explanation: "Lyonesse appears in Arthurian legend as the home of Sir Tristan, supposedly submerged on 11 November 1099. The Seven Stones reef between Land's End and Scilly is sometimes pointed to as its remains.",
         },
-      ],
+        {
+          question: "The first Atlantic Ocean islands visible from Land's End on a clear day, about 28 miles offshore, are part of which archipelago?",
+          options: ["The Channel Islands", "The Hebrides", "The Isles of Scilly", "Lundy"],
+          correctIndex: 2,
+          explanation: "On a good day you can see Tresco and the rest of the Isles of Scilly from the cliffs at Land's End — the granite outcrops are a popular destination by helicopter and ferry from Penzance.",
+        },
+        {
+          question: "Land's End is the south-westernmost point of mainland Britain. What's the traditional north-eastern endpoint of the LEJOG long-distance journey?",
+          options: ["Cape Wrath", "Dunnet Head", "John o' Groats", "Duncansby Head"],
+          correctIndex: 2,
+          explanation: "John o' Groats has been the symbolic NE end of Britain since the 19th century, even though Dunnet Head is technically further north. The classic LEJOG cycle / walk is roughly 874 miles by road.",
+        },
+      ], // hardest first: Lyonesse folklore > Isles of Scilly > LEJOG endpoint
     },
   ] as DailyCity[],
 }
@@ -237,11 +237,12 @@ export default function DailyPage() {
     setAttempts([])
     setArrivedAt(0)
     setAdvancing(false)
+    // For the demo, always pick the first (hardest) question per city —
+    // questions arrays are pre-ordered hardest-first. Swap the indexing
+    // for randomisation later.
     setChosenQuestions(
       MOCK_PUZZLE.cities.map(c =>
-        c.questions.length > 0
-          ? c.questions[Math.floor(Math.random() * c.questions.length)]
-          : null
+        c.questions.length > 0 ? c.questions[0] : null
       )
     )
   }
