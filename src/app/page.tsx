@@ -4,11 +4,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import prefetchedRoutes from "@/data/squizzle/uk-daily-routes.json"
 
-// Crop on the British-Isles SVG map (% of the SVG's natural width/height).
+// Crop on the basemap (% of the natural width/height of the source raster).
 type MapViewport = { left: number; top: number; width: number; height: number }
-// Default crop frames mainland UK + Ireland. Wider than tall so the map
-// container leaves room for the answer buttons below it.
-const UK_VIEWPORT: MapViewport = { left: 4, top: 39, width: 92, height: 55 }
+// (MAP_DEFAULT_VIEWPORT is defined below as a region-aware mutable value.)
 
 // ─── Mock puzzle (replace with daily-puzzle API later) ──────────────────────
 
@@ -237,9 +235,14 @@ export default function DailyPage() {
                 86_400_000,
             ) + 1
           : FALLBACK_PUZZLE.puzzleNumber
+        // Swap the basemap (raster + projection bounds + default crop) to
+        // match the payload's region. Done BEFORE setPuzzle so the next
+        // render projects coordinates against the right basemap.
+        applyBasemap(payload.region)
+        setViewport(MAP_DEFAULT_VIEWPORT)
         setPuzzle({
           puzzleNumber: dayNumber,
-          international: false,
+          international: payload.region !== "british-isles",
           cities: payload.cities,
         } as typeof FALLBACK_PUZZLE)
       })
@@ -251,7 +254,7 @@ export default function DailyPage() {
   const [lives, setLives] = useState(STARTING_LIVES)
   const [attempts, setAttempts] = useState<Attempt[]>([])
   const [showShare, setShowShare] = useState(false)
-  const [viewport, setViewport] = useState<MapViewport>(UK_VIEWPORT)
+  const [viewport, setViewport] = useState<MapViewport>(MAP_DEFAULT_VIEWPORT)
   // Bus position in the points[] index (0 = start city). Index N means the
   // bus has arrived at points[N], i.e., completed N legs.
   const [arrivedAt, setArrivedAt] = useState(0)
@@ -386,7 +389,7 @@ export default function DailyPage() {
         <MapDebugPanel
           viewport={viewport}
           onChange={setViewport}
-          onReset={() => setViewport(UK_VIEWPORT)}
+          onReset={() => setViewport(MAP_DEFAULT_VIEWPORT)}
         />
       )}
     </div>
@@ -422,32 +425,93 @@ type RoutePoint = { name: string; lat: number; lng: number }
 /** [lng, lat] pairs from OSRM. */
 type LegPolyline = [number, number][]
 
-// British Isles map asset — "Bristish_islands_blank.svg" by Ikonact on
-// Wikimedia Commons, licensed CC BY-SA 3.0. Equirectangular, bounds below.
-// Source: https://commons.wikimedia.org/wiki/File:Bristish_islands_blank.svg
-const MAP_W_PX = 990
-const MAP_H_PX = 1569
-const UK_GEO = { top: 61.0, bottom: 49.0, left: -11.0, right: 2.2 }
-// Rasterised from the source SVG so the browser doesn't re-rasterise the
-// 5.6 MB vector every viewBox change (which caused noticeable jank during
-// pan/zoom transitions). 1500×2377 webp ≈ 210 KB.
-const UK_MAP_HREF = "/squizzle/uk-map.webp"
-const UK_MAP_ATTRIBUTION = {
+// Active basemap. These are LET, not const — the page rebinds them once on
+// mount when the daily payload's region is known (see DailyPage's setBasemap
+// call). The page only ever displays one puzzle at a time, so the module-
+// level mutability is safe; this avoids drilling a basemap prop through
+// every projection helper and the RouteMap component.
+//
+// Default = British Isles map asset ("Bristish_islands_blank.svg" by Ikonact
+// on Wikimedia Commons, licensed CC BY-SA 3.0; equirectangular).
+let MAP_W_PX = 990
+let MAP_H_PX = 1569
+let MAP_GEO = { top: 61.0, bottom: 49.0, left: -11.0, right: 2.2 }
+let MAP_HREF = "/squizzle/uk-map.webp"
+let MAP_DEFAULT_VIEWPORT: MapViewport = { left: 4, top: 39, width: 92, height: 55 }
+let MAP_ATTRIBUTION: { text: string; href: string } | null = {
   text: "Map © Ikonact / CC BY-SA 3.0",
   href: "https://commons.wikimedia.org/wiki/File:Bristish_islands_blank.svg",
 }
 
+// Per-region basemap config. Mirrors REGION_BASEMAPS in src/lib/daily-types
+// but compiled into the page so we don't ship that whole module client-side.
+type RegionId =
+  | "british-isles" | "europe" | "north-america" | "south-america"
+  | "africa" | "asia" | "oceania" | "world"
+type BasemapConfig = {
+  src: string
+  widthPx: number
+  heightPx: number
+  geo: { top: number; bottom: number; left: number; right: number }
+  defaultCrop: MapViewport
+  attribution: { text: string; href: string } | null
+}
+const NATURAL_EARTH_ATTR = {
+  text: "Map © Natural Earth · public domain",
+  href: "https://www.naturalearthdata.com/",
+}
+const WORLD_GEO = { top: 85, bottom: -85, left: -180, right: 180 }
+const WORLD_CFG = (defaultCrop: MapViewport): BasemapConfig => ({
+  src: "/maps/world.webp",
+  widthPx: 4000,
+  heightPx: 2000,
+  geo: WORLD_GEO,
+  defaultCrop,
+  attribution: NATURAL_EARTH_ATTR,
+})
+const REGION_BASEMAPS: Record<RegionId, BasemapConfig> = {
+  "british-isles": {
+    src: "/squizzle/uk-map.webp",
+    widthPx: 990,
+    heightPx: 1569,
+    geo: { top: 61, bottom: 49, left: -11, right: 2.2 },
+    defaultCrop: { left: 4, top: 39, width: 92, height: 55 },
+    attribution: {
+      text: "Map © Ikonact / CC BY-SA 3.0",
+      href: "https://commons.wikimedia.org/wiki/File:Bristish_islands_blank.svg",
+    },
+  },
+  europe: WORLD_CFG({ left: 43, top: 7.6, width: 19.5, height: 22.4 }),
+  "north-america": WORLD_CFG({ left: 2.8, top: 7, width: 33, height: 39 }),
+  "south-america": WORLD_CFG({ left: 27, top: 42, width: 14, height: 41 }),
+  africa: WORLD_CFG({ left: 45, top: 27.6, width: 19.5, height: 43 }),
+  asia: WORLD_CFG({ left: 56.9, top: 4.1, width: 43.1, height: 53 }),
+  oceania: WORLD_CFG({ left: 80.6, top: 47, width: 19.4, height: 35 }),
+  world: WORLD_CFG({ left: 0, top: 0, width: 100, height: 100 }),
+}
+
+function applyBasemap(region: string | undefined) {
+  const id = (region && region in REGION_BASEMAPS ? region : "british-isles") as RegionId
+  const cfg = REGION_BASEMAPS[id]
+  MAP_W_PX = cfg.widthPx
+  MAP_H_PX = cfg.heightPx
+  MAP_GEO = cfg.geo
+  MAP_HREF = cfg.src
+  MAP_DEFAULT_VIEWPORT = cfg.defaultCrop
+  MAP_ATTRIBUTION = cfg.attribution
+}
+
 /** Equirectangular projection matched to the SVG's lat/lng bounds. */
 function projectMapPx(lat: number, lng: number): [number, number] {
-  const x = ((lng - UK_GEO.left) / (UK_GEO.right - UK_GEO.left)) * MAP_W_PX
-  const y = ((UK_GEO.top - lat) / (UK_GEO.top - UK_GEO.bottom)) * MAP_H_PX
+  const x = ((lng - MAP_GEO.left) / (MAP_GEO.right - MAP_GEO.left)) * MAP_W_PX
+  const y = ((MAP_GEO.top - lat) / (MAP_GEO.top - MAP_GEO.bottom)) * MAP_H_PX
   return [x, y]
 }
 
 /** Same projection but returning %-of-map coords (matches MapViewport units). */
 function projectLatLngPct(lat: number, lng: number): { left: number; top: number } {
-  const left = ((lng - UK_GEO.left) / (UK_GEO.right - UK_GEO.left)) * 100
-  const top = ((UK_GEO.top - lat) / (UK_GEO.top - UK_GEO.bottom)) * 100
+  const left = ((lng - MAP_GEO.left) / (MAP_GEO.right - MAP_GEO.left)) * 100
+  const top = ((MAP_GEO.top - lat) / (MAP_GEO.top - MAP_GEO.bottom)) * 100
   return { left, top }
 }
 
@@ -617,7 +681,7 @@ function RouteMap({
   arrivedAt: arrivedAtProp,
   onArrive,
   className,
-  viewport = UK_VIEWPORT,
+  viewport = MAP_DEFAULT_VIEWPORT,
 }: {
   points: RoutePoint[]
   /** Where the bus should end up. If undefined, no bus. */
@@ -770,7 +834,7 @@ function RouteMap({
         aria-label="Route map"
       >
         <image
-          href={UK_MAP_HREF}
+          href={MAP_HREF}
           x={0}
           y={0}
           width={MAP_W_PX}
@@ -894,16 +958,20 @@ function RouteMap({
         />
       )}
 
-      {/* CC BY-SA 3.0 attribution for the UK map asset. */}
-      <a
-        href={UK_MAP_ATTRIBUTION.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute bottom-1 right-2 text-[8px] text-teal-100/70 hover:text-teal-100 underline-offset-2 hover:underline pointer-events-auto"
-        style={{ textShadow: "0 0 2px rgba(0,0,0,0.85)" }}
-      >
-        {UK_MAP_ATTRIBUTION.text}
-      </a>
+      {/* Basemap attribution (links to source). UK map is CC BY-SA 3.0;
+          Natural Earth is public domain. Hidden if the basemap has no
+          attribution requirement. */}
+      {MAP_ATTRIBUTION && (
+        <a
+          href={MAP_ATTRIBUTION.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute bottom-1 right-2 text-[8px] text-teal-100/70 hover:text-teal-100 underline-offset-2 hover:underline pointer-events-auto"
+          style={{ textShadow: "0 0 2px rgba(0,0,0,0.85)" }}
+        >
+          {MAP_ATTRIBUTION.text}
+        </a>
+      )}
     </div>
   )
 }
@@ -1347,10 +1415,10 @@ function cityLegViewport(a: RoutePoint, b: RoutePoint): MapViewport {
   const minH = 45
   let w = Math.max(right - left, minW)
   let h = Math.max(bottom - top, minH)
-  // Lock to the same on-screen aspect as the start-screen UK_VIEWPORT, so the
+  // Lock to the same on-screen aspect as the start-screen MAP_DEFAULT_VIEWPORT, so the
   // map container is identical across the start screen and every leg.
   const MAP_W = 3344, MAP_H = 1880
-  const TARGET_ASPECT = (UK_VIEWPORT.width * MAP_W) / (UK_VIEWPORT.height * MAP_H)
+  const TARGET_ASPECT = (MAP_DEFAULT_VIEWPORT.width * MAP_W) / (MAP_DEFAULT_VIEWPORT.height * MAP_H)
   // currentAspect_screen = (w * MAP_W) / (h * MAP_H)
   // Want this == TARGET_ASPECT, so adjust w or h.
   const currentAspect = (w * MAP_W) / (h * MAP_H)
