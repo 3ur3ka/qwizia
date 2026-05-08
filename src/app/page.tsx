@@ -30,7 +30,10 @@ type DailyCity = {
   questions: DailyQuestion[]
 }
 
-const MOCK_PUZZLE = {
+/** Fallback used until /api/daily resolves — and as a permanent safety net
+ *  if squabblebox is unreachable. Matches the DailyPayload shape's relevant
+ *  fields so the rest of the page renders identically either way. */
+const FALLBACK_PUZZLE = {
   puzzleNumber: 124,
   international: false,
   cities: [
@@ -208,7 +211,42 @@ type Attempt = { cityIndex: number; correct: boolean }
 
 export default function DailyPage() {
   const [status, setStatus] = useState<GameStatus>("start")
-  // Index into MOCK_PUZZLE.cities — which city's question is currently being asked.
+  // The day's puzzle. Defaults to the fallback so the UI always has data;
+  // gets replaced with the real puzzle once /api/daily resolves. Note we
+  // keep the FALLBACK_PUZZLE literal type so the rest of the page (which
+  // expects `puzzleNumber`, `international`, etc.) still typechecks.
+  const [puzzle, setPuzzle] = useState<typeof FALLBACK_PUZZLE>(FALLBACK_PUZZLE)
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/daily")
+      .then(async r => (r.ok ? r.json() : null))
+      .then(payload => {
+        if (cancelled || !payload || payload.version !== 1) return
+        // Map the squabblebox DailyPayload onto the local puzzle shape.
+        // The fields we use for rendering (cities, theme accent) line up;
+        // puzzleNumber + international are qwizia-specific UX fields we
+        // synthesise from the date.
+        const dayNumber = payload.date
+          ? Math.round(
+              (Date.UTC(
+                Number(payload.date.slice(0, 4)),
+                Number(payload.date.slice(5, 7)) - 1,
+                Number(payload.date.slice(8, 10)),
+              ) -
+                Date.UTC(2026, 0, 1)) /
+                86_400_000,
+            ) + 1
+          : FALLBACK_PUZZLE.puzzleNumber
+        setPuzzle({
+          puzzleNumber: dayNumber,
+          international: false,
+          cities: payload.cities,
+        } as typeof FALLBACK_PUZZLE)
+      })
+      .catch(() => { /* fall back silently */ })
+    return () => { cancelled = true }
+  }, [])
+  // Index into puzzle.cities — which city's question is currently being asked.
   const [cityIndex, setCityIndex] = useState(0)
   const [lives, setLives] = useState(STARTING_LIVES)
   const [attempts, setAttempts] = useState<Attempt[]>([])
@@ -228,7 +266,7 @@ export default function DailyPage() {
   }, [])
 
   // The number of questioned cities (cities with at least one question).
-  const numQuestions = MOCK_PUZZLE.cities.filter(c => c.questions.length > 0).length
+  const numQuestions = puzzle.cities.filter(c => c.questions.length > 0).length
 
   const start = () => {
     setStatus("playing")
@@ -241,7 +279,7 @@ export default function DailyPage() {
     // questions arrays are pre-ordered hardest-first. Swap the indexing
     // for randomisation later.
     setChosenQuestions(
-      MOCK_PUZZLE.cities.map(c =>
+      puzzle.cities.map(c =>
         c.questions.length > 0 ? c.questions[0] : null
       )
     )
@@ -289,7 +327,7 @@ export default function DailyPage() {
     <div className="min-h-screen bg-gradient-to-b from-teal-800 via-teal-900 to-teal-900 text-teal-50">
       <div className="max-w-2xl mx-auto p-4 sm:p-8 min-h-screen flex flex-col">
         <Header
-          puzzleNumber={MOCK_PUZZLE.puzzleNumber}
+          puzzleNumber={puzzle.puzzleNumber}
           lives={status === "playing" ? lives : null}
         />
 
@@ -298,7 +336,7 @@ export default function DailyPage() {
             {status === "start" && (
               <StartScreen
                 key="start"
-                puzzle={MOCK_PUZZLE}
+                puzzle={puzzle}
                 onStart={start}
                 viewport={viewport}
               />
@@ -306,12 +344,12 @@ export default function DailyPage() {
             {status === "playing" && (
               <QuestionScreen
                 key="playing"
-                puzzle={MOCK_PUZZLE}
+                puzzle={puzzle}
                 cityIndex={cityIndex}
                 totalCities={numQuestions}
                 arrivedAt={arrivedAt}
                 advancing={advancing}
-                question={chosenQuestions[cityIndex] ?? MOCK_PUZZLE.cities[cityIndex].questions[0]}
+                question={chosenQuestions[cityIndex] ?? puzzle.cities[cityIndex].questions[0]}
                 onAnswer={onAnswer}
                 onBusArrive={onBusArrive}
                 onNext={onNext}
@@ -320,7 +358,7 @@ export default function DailyPage() {
             {(status === "won" || status === "lost") && (
               <EndScreen
                 key="end"
-                puzzle={MOCK_PUZZLE}
+                puzzle={puzzle}
                 won={status === "won"}
                 lives={lives}
                 attempts={attempts}
@@ -335,7 +373,7 @@ export default function DailyPage() {
       <AnimatePresence>
         {showShare && (
           <ShareModal
-            puzzle={MOCK_PUZZLE}
+            puzzle={puzzle}
             won={status === "won"}
             lives={lives}
             attempts={attempts}
@@ -1047,7 +1085,7 @@ function BusMarker({
 function StartScreen({
   puzzle, onStart, viewport,
 }: {
-  puzzle: typeof MOCK_PUZZLE
+  puzzle: typeof FALLBACK_PUZZLE
   onStart: () => void
   viewport: MapViewport
 }) {
@@ -1104,7 +1142,7 @@ function StartScreen({
 function QuestionScreen({
   puzzle, cityIndex, totalCities, arrivedAt, advancing, question, onAnswer, onBusArrive, onNext,
 }: {
-  puzzle: typeof MOCK_PUZZLE
+  puzzle: typeof FALLBACK_PUZZLE
   cityIndex: number
   totalCities: number
   arrivedAt: number
@@ -1350,7 +1388,7 @@ function Heart({ filled }: { filled: boolean }) {
 function EndScreen({
   puzzle, won, lives, attempts, onShare, viewport,
 }: {
-  puzzle: typeof MOCK_PUZZLE
+  puzzle: typeof FALLBACK_PUZZLE
   won: boolean
   lives: number
   attempts: Attempt[]
@@ -1448,7 +1486,7 @@ function ShareGrid({
 function ShareModal({
   puzzle, won, lives, attempts, onClose,
 }: {
-  puzzle: typeof MOCK_PUZZLE
+  puzzle: typeof FALLBACK_PUZZLE
   won: boolean
   lives: number
   attempts: Attempt[]
@@ -1506,7 +1544,7 @@ function ShareModal({
 }
 
 function buildShareText(
-  puzzle: typeof MOCK_PUZZLE,
+  puzzle: typeof FALLBACK_PUZZLE,
   won: boolean,
   lives: number,
   attempts: Attempt[],
