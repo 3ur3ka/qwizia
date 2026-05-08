@@ -216,7 +216,12 @@ export default function DailyPage() {
   const [puzzle, setPuzzle] = useState<typeof FALLBACK_PUZZLE>(FALLBACK_PUZZLE)
   useEffect(() => {
     let cancelled = false
-    fetch("/api/daily")
+    // Optional ?date=YYYY-MM-DD URL param so the proxy can fetch a future-
+    // seeded puzzle for QA/demo. Anything else is ignored.
+    const search = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null
+    const dateParam = search?.get("date")
+    const dateQuery = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? `?date=${dateParam}` : ""
+    fetch(`/api/daily${dateQuery}`)
       .then(async r => (r.ok ? r.json() : null))
       .then(payload => {
         if (cancelled || !payload || payload.version !== 1) return

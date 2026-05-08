@@ -10,14 +10,14 @@
  * unreachable; the page treats that as "use the local fallback puzzle".
  */
 
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import type { DailyPayload } from "@/lib/daily-types"
 
 // Cache for 1 minute on the edge — the puzzle only changes once a day so
 // brief caching is safe and absorbs any accidental traffic spikes.
 export const revalidate = 60
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const base = process.env.SQUABBLEBOX_API_URL
   const token = process.env.QWIZIA_API_TOKEN
   if (!base || !token) {
@@ -27,8 +27,17 @@ export async function GET() {
     )
   }
 
+  // Optional ?date=YYYY-MM-DD passthrough — lets you preview a future
+  // puzzle that's been seeded but not yet active. Validated to YYYY-MM-DD
+  // shape so we don't blindly forward arbitrary query strings.
+  const dateParam = request.nextUrl.searchParams.get("date")
+  const dateValid = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)
+  const upstreamUrl = dateValid
+    ? `${base}/api/qwizia/daily?date=${dateParam}`
+    : `${base}/api/qwizia/daily`
+
   try {
-    const r = await fetch(`${base}/api/qwizia/daily`, {
+    const r = await fetch(upstreamUrl, {
       headers: { Authorization: `Bearer ${token}` },
       // Pass through Next's edge cache + ISR — squabblebox sets cache-control
       // headers, but we also want our own short revalidation window.
