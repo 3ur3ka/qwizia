@@ -1410,20 +1410,23 @@ function QuestionScreen({
 function cityLegViewport(a: RoutePoint, b: RoutePoint): MapViewport {
   const pa = projectLatLngPct(a.lat, a.lng)
   const pb = projectLatLngPct(b.lat, b.lng)
-  // Padding and minimum size scaled to the active region's default crop, not
-  // the whole basemap. Without this, a UK-tuned padX=8 (8% of the British
-  // Isles SVG ≈ comfortable) becomes 8% of the entire world basemap when the
-  // puzzle is e.g. Greece — and the leg viewport balloons to ~Mediterranean
-  // size with the route shrunk to a dot. The chosen ratios reproduce the
-  // original British Isles values (8/10/35/45 against a 92×55 default crop).
-  const padX = MAP_DEFAULT_VIEWPORT.width * 0.09
-  const padY = MAP_DEFAULT_VIEWPORT.height * 0.18
+  // Padding and minimum size in geographical degrees, then converted to
+  // %-of-basemap. This keeps the on-screen frame ~constant in real-world km
+  // regardless of basemap scale: ~80km horizontal padding, ~130km vertical,
+  // and a ~350×600km minimum frame. The original UK-tuned 8/10/35/45 values
+  // emerged from these same degrees against the British Isles SVG (13.2° ×
+  // 12°), so this preserves UK behaviour while giving Greece (and any other
+  // world-basemap region) a tight zoom instead of a Mediterranean panorama.
+  const lngRange = MAP_GEO.right - MAP_GEO.left
+  const latRange = MAP_GEO.top - MAP_GEO.bottom
+  const padX = (1.0 / lngRange) * 100
+  const padY = (1.2 / latRange) * 100
   const left = Math.min(pa.left, pb.left) - padX
   const right = Math.max(pa.left, pb.left) + padX
   const top = Math.min(pa.top, pb.top) - padY
   const bottom = Math.max(pa.top, pb.top) + padY
-  const minW = MAP_DEFAULT_VIEWPORT.width * 0.38
-  const minH = MAP_DEFAULT_VIEWPORT.height * 0.82
+  const minW = (4.5 / lngRange) * 100
+  const minH = (5.5 / latRange) * 100
   let w = Math.max(right - left, minW)
   let h = Math.max(bottom - top, minH)
   // Lock to the same on-screen aspect as the start-screen MAP_DEFAULT_VIEWPORT, so the
