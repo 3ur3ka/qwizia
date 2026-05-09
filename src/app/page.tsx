@@ -209,11 +209,7 @@ type Attempt = { cityIndex: number; correct: boolean }
 
 export default function DailyPage() {
   const [status, setStatus] = useState<GameStatus>("start")
-  // The day's puzzle. Defaults to the fallback so the UI always has data;
-  // gets replaced with the real puzzle once /api/daily resolves. Note we
-  // keep the FALLBACK_PUZZLE literal type so the rest of the page (which
-  // expects `puzzleNumber`, `international`, etc.) still typechecks.
-  const [puzzle, setPuzzle] = useState<typeof FALLBACK_PUZZLE>(FALLBACK_PUZZLE)
+  const [puzzle, setPuzzle] = useState<typeof FALLBACK_PUZZLE | null>(null)
   useEffect(() => {
     let cancelled = false
     // Optional ?date=YYYY-MM-DD URL param so the proxy can fetch a future-
@@ -244,7 +240,7 @@ export default function DailyPage() {
         // match the payload's region. Done BEFORE setPuzzle so the next
         // render projects coordinates against the right basemap.
         applyBasemap(payload.region)
-        setViewport(MAP_DEFAULT_VIEWPORT)
+        setViewport(payload.theme?.crop ?? MAP_DEFAULT_VIEWPORT)
         setPuzzle({
           puzzleNumber: dayNumber,
           international: payload.region !== "british-isles",
@@ -274,9 +270,10 @@ export default function DailyPage() {
   }, [])
 
   // The number of questioned cities (cities with at least one question).
-  const numQuestions = puzzle.cities.filter(c => c.questions.length > 0).length
+  const numQuestions = puzzle?.cities.filter(c => c.questions.length > 0).length ?? 0
 
   const start = () => {
+    if (!puzzle) return
     setStatus("playing")
     setCityIndex(0)
     setLives(STARTING_LIVES)
@@ -335,11 +332,16 @@ export default function DailyPage() {
     <div className="min-h-screen bg-gradient-to-b from-teal-800 via-teal-900 to-teal-900 text-teal-50">
       <div className="max-w-2xl mx-auto p-4 sm:p-8 min-h-screen flex flex-col">
         <Header
-          puzzleNumber={puzzle.puzzleNumber}
+          puzzleNumber={puzzle?.puzzleNumber ?? null}
           lives={status === "playing" ? lives : null}
         />
+        {!puzzle && (
+          <main className="flex-1 flex items-center justify-center">
+            <p className="text-teal-400 text-sm animate-pulse">Loading today's journey…</p>
+          </main>
+        )}
 
-        <main className="flex-1 flex items-start justify-center pt-3 pb-8">
+        {puzzle && <main className="flex-1 flex items-start justify-center pt-3 pb-8">
           <AnimatePresence mode="wait">
             {status === "start" && (
               <StartScreen
@@ -375,11 +377,11 @@ export default function DailyPage() {
               />
             )}
           </AnimatePresence>
-        </main>
+        </main>}
       </div>
 
       <AnimatePresence>
-        {showShare && (
+        {showShare && puzzle && (
           <ShareModal
             puzzle={puzzle}
             won={status === "won"}
@@ -403,13 +405,13 @@ export default function DailyPage() {
 
 // ─── Header ─────────────────────────────────────────────────────────────────
 
-function Header({ puzzleNumber, lives }: { puzzleNumber: number; lives: number | null }) {
+function Header({ puzzleNumber, lives }: { puzzleNumber: number | null; lives: number | null }) {
   const date = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })
   return (
     <header className="flex items-center justify-between py-2 gap-3">
       <div className="min-w-0">
         <h1 className="text-xl font-bold tracking-tight text-amber-200">Qwizia Daily</h1>
-        <p className="text-xs text-teal-400">#{puzzleNumber} · {date}</p>
+        <p className="text-xs text-teal-400">{puzzleNumber != null ? `#${puzzleNumber} · ` : ""}{date}</p>
       </div>
       {lives !== null ? (
         <div className="flex gap-1.5 shrink-0">
