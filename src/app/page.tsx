@@ -1016,6 +1016,7 @@ function RedTrailPath({
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
+      vectorEffect="non-scaling-stroke"
       pathLength={1}
       strokeDasharray={1}
       strokeDashoffset={initialOffset}
