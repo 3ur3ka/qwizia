@@ -467,7 +467,7 @@ const NATURAL_EARTH_ATTR = {
   text: "Map © Natural Earth · public domain",
   href: "https://www.naturalearthdata.com/",
 }
-const WORLD_GEO = { top: 85, bottom: -85, left: -180, right: 180 }
+const WORLD_GEO = { top: 90, bottom: -90, left: -180, right: 180 }
 const WORLD_CFG = (defaultCrop: MapViewport): BasemapConfig => ({
   src: "/maps/world.webp",
   widthPx: 4000,
