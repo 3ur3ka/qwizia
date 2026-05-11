@@ -406,7 +406,16 @@ export default function DailyPage() {
 // ─── Header ─────────────────────────────────────────────────────────────────
 
 function Header({ puzzleNumber, lives }: { puzzleNumber: number | null; lives: number | null }) {
-  const date = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })
+  // Render the date only after mount. `new Date().toLocaleDateString(undefined, ...)`
+  // resolves the locale differently on server (process default) vs client
+  // (user agent), and even the same locale can pick a different day if the
+  // SSR and hydration straddle midnight. Either case throws React error #418
+  // (text mismatch during hydration). An empty initial value keeps SSR/CSR
+  // identical; useEffect fills it post-hydration.
+  const [date, setDate] = useState("")
+  useEffect(() => {
+    setDate(new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }))
+  }, [])
   return (
     <header className="flex items-center justify-between py-2 gap-3">
       <div className="min-w-0">
