@@ -768,6 +768,7 @@ function RouteMap({
   viewport = MAP_DEFAULT_VIEWPORT,
   polylines,
   borders,
+  interactive,
 }: {
   points: RoutePoint[]
   /** Where the bus should end up. If undefined, no bus. */
@@ -783,6 +784,9 @@ function RouteMap({
   polylines?: LegPolyline[]
   /** Country outlines for the destination, drawn beneath the route. */
   borders?: { rings: [number, number][][] }[]
+  /** Enable user pan/zoom (wheel, pinch, drag, +/- buttons). Used on the
+   *  end screen so players can explore the route after finishing. */
+  interactive?: boolean
 }) {
   const targetVp = viewport
   const arrivedAt = arrivedAtProp ?? reachedCount ?? 0
@@ -907,6 +911,11 @@ function RouteMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectedStops, staticBusPos, showStaticBus, showAnimatingBus])
 
+  // Cancels the in-flight autotween rAF. User gestures grab this ref so the
+  // map doesn't fight pinch/wheel/drag. The autotween useEffect (re)assigns it
+  // on each new targetVp.
+  const tweenCancelRef = useRef<(() => void) | null>(null)
+
   // Tween from currentVpRef to the new target whenever the prop changes.
   useEffect(() => {
     const start = { ...currentVpRef.current }
@@ -935,14 +944,182 @@ function RouteMap({
       if (t < 1) frameId = requestAnimationFrame(tick)
     }
     frameId = requestAnimationFrame(tick)
+    tweenCancelRef.current = () => cancelAnimationFrame(frameId)
     return () => cancelAnimationFrame(frameId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetVp])
 
+  // ── User pan/zoom (only when `interactive`) ───────────────────────────────
+  // Mutates currentVpRef + DOM directly via applyVp, same as the autotween.
+  // The autotween only re-fires when targetVp prop changes, so user state is
+  // preserved across re-renders of the parent.
+  const containerRef = useRef<HTMLDivElement>(null)
+  // Stable view of the target — wheel/pinch handlers read it in stable closures
+  // without subscribing to props. (initial / reset fallback.)
+  const initialVpRef = useRef(targetVp); initialVpRef.current = targetVp
+  // Bump to force a re-render of overlay controls (button enable/disable).
+  const [, setUserVpTick] = useState(0)
+
+  /** Clamp + commit a viewport to currentVpRef and the DOM. */
+  const commitVp = (v: MapViewport) => {
+    // Min zoom: 4% wide / tall (very tight). Max: 100% (whole basemap).
+    const minSize = 4
+    const maxSize = 100
+    let w = Math.max(minSize, Math.min(maxSize, v.width))
+    let h = Math.max(minSize, Math.min(maxSize, v.height))
+    // Pan clamp: keep the viewport inside [0..100] on both axes.
+    let l = Math.max(0, Math.min(100 - w, v.left))
+    let t = Math.max(0, Math.min(100 - h, v.top))
+    const next = { left: l, top: t, width: w, height: h }
+    currentVpRef.current = next
+    applyVp(next)
+  }
+
+  /** Zoom by `factor` (< 1 zooms in) around a focal point given in % of the
+   *  container — keeps the world coord under the focal point stationary. */
+  const zoomAround = (factor: number, focalXPct = 50, focalYPct = 50) => {
+    tweenCancelRef.current?.()
+    const v = currentVpRef.current
+    // World % under the focal point right now.
+    const fx = v.left + (focalXPct / 100) * v.width
+    const fy = v.top + (focalYPct / 100) * v.height
+    const newW = v.width * factor
+    const newH = v.height * factor
+    const newL = fx - (focalXPct / 100) * newW
+    const newT = fy - (focalYPct / 100) * newH
+    commitVp({ left: newL, top: newT, width: newW, height: newH })
+    setUserVpTick(n => n + 1)
+  }
+
+  /** Pan by dx/dy expressed as % of container size. */
+  const panBy = (dxPct: number, dyPct: number) => {
+    tweenCancelRef.current?.()
+    const v = currentVpRef.current
+    commitVp({
+      left: v.left - (dxPct / 100) * v.width,
+      top: v.top - (dyPct / 100) * v.height,
+      width: v.width,
+      height: v.height,
+    })
+  }
+
+  useEffect(() => {
+    if (!interactive) return
+    const el = containerRef.current
+    if (!el) return
+
+    const focalFromEvent = (e: { clientX: number; clientY: number }) => {
+      const rect = el.getBoundingClientRect()
+      return [
+        ((e.clientX - rect.left) / rect.width) * 100,
+        ((e.clientY - rect.top) / rect.height) * 100,
+      ] as [number, number]
+    }
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const [fx, fy] = focalFromEvent(e)
+      // Trackpad ticks are small; mouse wheels are large. Normalise to ~5% per notch.
+      const intensity = Math.min(0.25, Math.abs(e.deltaY) / 500)
+      const factor = e.deltaY < 0 ? 1 - intensity : 1 + intensity
+      zoomAround(factor, fx, fy)
+    }
+
+    // Pointer state for drag + pinch.
+    const pointers = new Map<number, { x: number; y: number }>()
+    let lastSingle: { x: number; y: number } | null = null
+    let lastPinch: { dist: number; midX: number; midY: number } | null = null
+
+    const pinchDist = () => {
+      const [a, b] = [...pointers.values()]
+      return Math.hypot(a.x - b.x, a.y - b.y)
+    }
+    const pinchMid = () => {
+      const [a, b] = [...pointers.values()]
+      return [(a.x + b.x) / 2, (a.y + b.y) / 2] as [number, number]
+    }
+
+    const onPointerDown = (e: PointerEvent) => {
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      el.setPointerCapture(e.pointerId)
+      tweenCancelRef.current?.()
+      if (pointers.size === 1) {
+        lastSingle = { x: e.clientX, y: e.clientY }
+        lastPinch = null
+      } else if (pointers.size === 2) {
+        lastSingle = null
+        const [mx, my] = pinchMid()
+        lastPinch = { dist: pinchDist(), midX: mx, midY: my }
+      }
+    }
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!pointers.has(e.pointerId)) return
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (pointers.size === 1 && lastSingle) {
+        const rect = el.getBoundingClientRect()
+        const dxPct = ((e.clientX - lastSingle.x) / rect.width) * 100
+        const dyPct = ((e.clientY - lastSingle.y) / rect.height) * 100
+        lastSingle = { x: e.clientX, y: e.clientY }
+        panBy(dxPct, dyPct)
+      } else if (pointers.size === 2 && lastPinch) {
+        const rect = el.getBoundingClientRect()
+        const dist = pinchDist()
+        const [mx, my] = pinchMid()
+        const factor = lastPinch.dist / Math.max(1, dist)
+        const fxPct = ((mx - rect.left) / rect.width) * 100
+        const fyPct = ((my - rect.top) / rect.height) * 100
+        zoomAround(factor, fxPct, fyPct)
+        // Pan by the midpoint shift so the pinch also drags the map naturally.
+        const dxPct = ((mx - lastPinch.midX) / rect.width) * 100
+        const dyPct = ((my - lastPinch.midY) / rect.height) * 100
+        panBy(dxPct, dyPct)
+        lastPinch = { dist, midX: mx, midY: my }
+      }
+    }
+
+    const onPointerUp = (e: PointerEvent) => {
+      pointers.delete(e.pointerId)
+      try { el.releasePointerCapture(e.pointerId) } catch { /* not captured */ }
+      if (pointers.size < 2) lastPinch = null
+      if (pointers.size === 0) lastSingle = null
+      else if (pointers.size === 1) {
+        const [p] = [...pointers.values()]
+        lastSingle = { x: p.x, y: p.y }
+      }
+    }
+
+    el.addEventListener("wheel", onWheel, { passive: false })
+    el.addEventListener("pointerdown", onPointerDown)
+    el.addEventListener("pointermove", onPointerMove)
+    el.addEventListener("pointerup", onPointerUp)
+    el.addEventListener("pointercancel", onPointerUp)
+
+    return () => {
+      el.removeEventListener("wheel", onWheel)
+      el.removeEventListener("pointerdown", onPointerDown)
+      el.removeEventListener("pointermove", onPointerMove)
+      el.removeEventListener("pointerup", onPointerUp)
+      el.removeEventListener("pointercancel", onPointerUp)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interactive])
+
+  const resetView = () => {
+    tweenCancelRef.current?.()
+    commitVp(initialVpRef.current)
+    setUserVpTick(n => n + 1)
+  }
+
   return (
     <div
+      ref={containerRef}
       className={`relative overflow-hidden ${className ?? ""}`}
-      style={{ aspectRatio: aspect }}
+      style={{
+        aspectRatio: aspect,
+        touchAction: interactive ? "none" : undefined,
+        cursor: interactive ? "grab" : undefined,
+      }}
     >
       {/* Vector layer: SVG whose viewBox is updated imperatively by the
           tween rAF — React doesn't reconcile this element during the pan. */}
@@ -1105,6 +1282,29 @@ function RouteMap({
         >
           {MAP_ATTRIBUTION.text}
         </a>
+      )}
+
+      {interactive && (
+        <div className="absolute top-2 right-2 flex flex-col gap-1.5">
+          <button
+            type="button"
+            aria-label="Zoom in"
+            onClick={() => zoomAround(0.75)}
+            className="w-8 h-8 rounded-full bg-teal-900/85 hover:bg-teal-800 text-teal-50 text-xl leading-none font-bold border border-teal-700/60 shadow-md"
+          >+</button>
+          <button
+            type="button"
+            aria-label="Zoom out"
+            onClick={() => zoomAround(1 / 0.75)}
+            className="w-8 h-8 rounded-full bg-teal-900/85 hover:bg-teal-800 text-teal-50 text-xl leading-none font-bold border border-teal-700/60 shadow-md"
+          >−</button>
+          <button
+            type="button"
+            aria-label="Reset view"
+            onClick={resetView}
+            className="w-8 h-8 rounded-full bg-teal-900/85 hover:bg-teal-800 text-teal-50 text-base leading-none border border-teal-700/60 shadow-md"
+          >⤾</button>
+        </div>
       )}
     </div>
   )
@@ -1674,6 +1874,7 @@ function EndScreen({
         viewport={viewport}
         polylines={polylines}
         borders={borders}
+        interactive
         className="w-full max-w-xs mx-auto rounded-2xl border border-teal-700/40 bg-teal-950/40"
       />
 
