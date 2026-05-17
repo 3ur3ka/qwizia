@@ -36,11 +36,18 @@ export async function GET(request: NextRequest) {
     ? `${base}/api/qwizia/daily?date=${dateParam}`
     : `${base}/api/qwizia/daily`
 
+  // Cloudflare Bot Fight Mode (active on squabblebox.com) challenges most
+  // server-to-server traffic. squabblebox's CF WAF has a custom rule that
+  // skips challenges for any request carrying this shared-secret header.
+  // Stored as a Vercel env var on qwizia; matching value lives in the
+  // Cloudflare WAF rule expression.
+  const cfBypass = process.env.CF_BYPASS_SECRET
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
+  if (cfBypass) headers["x-cf-bypass"] = cfBypass
+
   try {
     const r = await fetch(upstreamUrl, {
-      headers: { Authorization: `Bearer ${token}` },
-      // Pass through Next's edge cache + ISR — squabblebox sets cache-control
-      // headers, but we also want our own short revalidation window.
+      headers,
       next: { revalidate: 60 },
     })
     if (!r.ok) {

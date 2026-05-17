@@ -34,6 +34,7 @@ type DailyCity = {
 const FALLBACK_PUZZLE = {
   puzzleNumber: 124,
   international: false,
+  destination: "The British Isles",
   cities: [
     {
       name: "Edinburgh",
@@ -210,6 +211,10 @@ type Attempt = { cityIndex: number; correct: boolean }
 export default function DailyPage() {
   const [status, setStatus] = useState<GameStatus>("start")
   const [puzzle, setPuzzle] = useState<typeof FALLBACK_PUZZLE | null>(null)
+  // Server-supplied road polylines (one per leg). When present, RouteMap uses
+  // them directly and skips the live OSRM lookup — avoids 5 round-trips to a
+  // public demo API on every cold pageload.
+  const [polylines, setPolylines] = useState<LegPolyline[] | null>(null)
   useEffect(() => {
     let cancelled = false
     // Optional ?date=YYYY-MM-DD URL param so the proxy can fetch a future-
@@ -240,12 +245,28 @@ export default function DailyPage() {
         // match the payload's region. Done BEFORE setPuzzle so the next
         // render projects coordinates against the right basemap.
         applyBasemap(payload.region)
-        setViewport(payload.theme?.crop ?? MAP_DEFAULT_VIEWPORT)
+        // Hand the prebuilt polylines through to RouteMap. Squabblebox already
+        // resolved each leg via OSRM at generation time, so the client doesn't
+        // need to.
+        if (Array.isArray(payload.polylines)) {
+          setPolylines(payload.polylines as LegPolyline[])
+        }
+        // Ignore payload.theme.crop — it was computed by squabblebox against
+        // the old shared world raster, so its %-coords don't map to the new
+        // per-continent basemap coordinate system. Open at the full continent
+        // for context, then zoom in to fit the route after a short beat so
+        // the user gets the wide-shot reveal before settling on the journey.
+        setViewport(MAP_DEFAULT_VIEWPORT)
         setPuzzle({
           puzzleNumber: dayNumber,
           international: payload.region !== "british-isles",
+          destination: payload.theme?.name ?? FALLBACK_PUZZLE.destination,
           cities: payload.cities,
         } as typeof FALLBACK_PUZZLE)
+        setTimeout(() => {
+          if (cancelled) return
+          setViewport(routeViewport(payload.cities))
+        }, 600)
       })
       .catch(() => { /* fall back silently */ })
     return () => { cancelled = true }
@@ -349,6 +370,7 @@ export default function DailyPage() {
                 puzzle={puzzle}
                 onStart={start}
                 viewport={viewport}
+                polylines={polylines ?? undefined}
               />
             )}
             {status === "playing" && (
@@ -363,6 +385,7 @@ export default function DailyPage() {
                 onAnswer={onAnswer}
                 onBusArrive={onBusArrive}
                 onNext={onNext}
+                polylines={polylines ?? undefined}
               />
             )}
             {(status === "won" || status === "lost") && (
@@ -374,6 +397,7 @@ export default function DailyPage() {
                 attempts={attempts}
                 onShare={() => setShowShare(true)}
                 viewport={viewport}
+                polylines={polylines ?? undefined}
               />
             )}
           </AnimatePresence>
@@ -422,14 +446,12 @@ function Header({ puzzleNumber, lives }: { puzzleNumber: number | null; lives: n
         <h1 className="text-xl font-bold tracking-tight text-amber-200">Qwizia Daily</h1>
         <p className="text-xs text-teal-400">{puzzleNumber != null ? `#${puzzleNumber} · ` : ""}{date}</p>
       </div>
-      {lives !== null ? (
+      {lives !== null && (
         <div className="flex gap-1.5 shrink-0">
           {Array.from({ length: STARTING_LIVES }).map((_, i) => (
             <Heart key={i} filled={i < lives} />
           ))}
         </div>
-      ) : (
-        <button className="text-xs text-teal-400 hover:text-teal-200">How to play</button>
       )}
     </header>
   )
@@ -476,15 +498,10 @@ const NATURAL_EARTH_ATTR = {
   text: "Map © Natural Earth · public domain",
   href: "https://www.naturalearthdata.com/",
 }
-const WORLD_GEO = { top: 90, bottom: -90, left: -180, right: 180 }
-const WORLD_CFG = (defaultCrop: MapViewport): BasemapConfig => ({
-  src: "/maps/world.webp",
-  widthPx: 4000,
-  heightPx: 2000,
-  geo: WORLD_GEO,
-  defaultCrop,
-  attribution: NATURAL_EARTH_ATTR,
-})
+// Per-continent rasters sliced from Natural Earth II shaded relief
+// (16200×8100, public domain). Each image is bounded close to its continent so
+// the pixel density at typical zoom stays sharp — the previous shared
+// 4000×2000 world raster produced visible blur once cropped to a country.
 const REGION_BASEMAPS: Record<RegionId, BasemapConfig> = {
   "british-isles": {
     src: "/squizzle/uk-map.webp",
@@ -497,13 +514,55 @@ const REGION_BASEMAPS: Record<RegionId, BasemapConfig> = {
       href: "https://commons.wikimedia.org/wiki/File:Bristish_islands_blank.svg",
     },
   },
-  europe: WORLD_CFG({ left: 43, top: 7.6, width: 19.5, height: 22.4 }),
-  "north-america": WORLD_CFG({ left: 2.8, top: 7, width: 33, height: 39 }),
-  "south-america": WORLD_CFG({ left: 27, top: 42, width: 14, height: 41 }),
-  africa: WORLD_CFG({ left: 45, top: 27.6, width: 19.5, height: 43 }),
-  asia: WORLD_CFG({ left: 56.9, top: 4.1, width: 43.1, height: 53 }),
-  oceania: WORLD_CFG({ left: 80.6, top: 47, width: 19.4, height: 35 }),
-  world: WORLD_CFG({ left: 0, top: 0, width: 100, height: 100 }),
+  europe: {
+    src: "/maps/europe.webp",
+    widthPx: 3375, heightPx: 1710,
+    geo: { top: 72, bottom: 34, left: -25, right: 50 },
+    defaultCrop: { left: 0, top: 0, width: 100, height: 100 },
+    attribution: NATURAL_EARTH_ATTR,
+  },
+  africa: {
+    src: "/maps/africa.webp",
+    widthPx: 3375, heightPx: 3375,
+    geo: { top: 38, bottom: -37, left: -20, right: 55 },
+    defaultCrop: { left: 0, top: 0, width: 100, height: 100 },
+    attribution: NATURAL_EARTH_ATTR,
+  },
+  "north-america": {
+    src: "/maps/north-america.webp",
+    widthPx: 4000, heightPx: 2333,
+    geo: { top: 75, bottom: 5, left: -170, right: -50 },
+    defaultCrop: { left: 0, top: 0, width: 100, height: 100 },
+    attribution: NATURAL_EARTH_ATTR,
+  },
+  "south-america": {
+    src: "/maps/south-america.webp",
+    widthPx: 2160, heightPx: 3150,
+    geo: { top: 14, bottom: -56, left: -82, right: -34 },
+    defaultCrop: { left: 0, top: 0, width: 100, height: 100 },
+    attribution: NATURAL_EARTH_ATTR,
+  },
+  asia: {
+    src: "/maps/asia.webp",
+    widthPx: 4500, heightPx: 2613,
+    geo: { top: 78, bottom: -12, left: 25, right: 180 },
+    defaultCrop: { left: 0, top: 0, width: 100, height: 100 },
+    attribution: NATURAL_EARTH_ATTR,
+  },
+  oceania: {
+    src: "/maps/oceania.webp",
+    widthPx: 3150, heightPx: 2700,
+    geo: { top: 10, bottom: -50, left: 110, right: 180 },
+    defaultCrop: { left: 0, top: 0, width: 100, height: 100 },
+    attribution: NATURAL_EARTH_ATTR,
+  },
+  world: {
+    src: "/maps/world.webp",
+    widthPx: 8000, heightPx: 4000,
+    geo: { top: 90, bottom: -90, left: -180, right: 180 },
+    defaultCrop: { left: 0, top: 0, width: 100, height: 100 },
+    attribution: NATURAL_EARTH_ATTR,
+  },
 }
 
 function applyBasemap(region: string | undefined) {
@@ -698,6 +757,7 @@ function RouteMap({
   onArrive,
   className,
   viewport = MAP_DEFAULT_VIEWPORT,
+  polylines,
 }: {
   points: RoutePoint[]
   /** Where the bus should end up. If undefined, no bus. */
@@ -708,15 +768,26 @@ function RouteMap({
   onArrive?: () => void
   className?: string
   viewport?: MapViewport
+  /** Server-supplied road polylines (one per leg). When present we skip the
+   *  live OSRM lookup entirely. */
+  polylines?: LegPolyline[]
 }) {
   const targetVp = viewport
   const arrivedAt = arrivedAtProp ?? reachedCount ?? 0
-  // Fetch real road geometry per leg.
+  // Resolve real road geometry per leg. If the caller passed `polylines`
+  // (from the daily payload), use those directly — no network. Otherwise
+  // fall back to the bundled-prefetched → localStorage → OSRM ladder.
   const legsKey = points.map(p => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join("|")
+  const expectedLegs = Math.max(0, points.length - 1)
+  const usePropPolylines = polylines && polylines.length === expectedLegs
   const [legs, setLegs] = useState<(LegPolyline | null)[]>(() =>
-    Array(Math.max(0, points.length - 1)).fill(null)
+    usePropPolylines ? (polylines as LegPolyline[]) : Array(expectedLegs).fill(null)
   )
   useEffect(() => {
+    if (usePropPolylines) {
+      setLegs(polylines as LegPolyline[])
+      return
+    }
     let cancelled = false
     const pairs: [RoutePoint, RoutePoint][] = []
     for (let i = 0; i < points.length - 1; i++) pairs.push([points[i], points[i + 1]])
@@ -725,7 +796,7 @@ function RouteMap({
     })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [legsKey])
+  }, [legsKey, usePropPolylines])
 
   // Aspect ratio of the cropped viewport — locked across legs by cityLegViewport.
   const aspect = (targetVp.width * MAP_W_PX) / (targetVp.height * MAP_H_PX)
@@ -1064,43 +1135,34 @@ function BusMarker({
     }
     const total = cum[N - 1] || 1
 
-    // Per-sample tangent angles. Use a wide window (±5 samples) on the
-    // smoothed bezier so each sample's tangent is averaged over a meaningful
-    // arc — eliminates per-sample noise.
+    // One horizontal flip for the whole leg, chosen by whether the leg ends
+    // east or west of where it started. The bus emoji is asymmetric (wheels
+    // bottom, "front" right by default) — rotating past ±90° would render it
+    // upside-down. Mirroring with scaleX(-1) keeps it right-side-up for
+    // west-bound legs and lets the per-frame rotation stay within [-90, 90].
+    const legFlip = points[N - 1][0] < points[0][0] ? -1 : 1
+
+    // Per-sample tangent angles. Wide window (±5 samples) averages out
+    // per-sample noise from the smoothed bezier.
     const SPAN = 5
-    const raw: number[] = points.map((_, i) => {
+    const rotates: number[] = points.map((_, i) => {
       const prev = points[Math.max(0, i - SPAN)]
       const next = points[Math.min(N - 1, i + SPAN)]
-      return (Math.atan2(next[1] - prev[1], next[0] - prev[0]) * 180) / Math.PI
+      const raw = (Math.atan2(next[1] - prev[1], next[0] - prev[0]) * 180) / Math.PI
+      // East-bound: raw is the visual rotation directly. West-bound: with the
+      // scaleX(-1) applied at render, the visible angle = 180 - raw, so we
+      // pre-compute that.
+      let v = legFlip === 1 ? raw : 180 - raw
+      // Normalize to (-180, 180].
+      while (v > 180) v -= 360
+      while (v <= -180) v += 360
+      // Clamp any "wrong-direction" excursion (a brief eastward dip on a
+      // west-bound leg, or vice versa) to keep the bus upright. Capping at
+      // ±90 reads as a steeper tilt; allowing past that would flip it.
+      if (v > 90) v = 90
+      else if (v < -90) v = -90
+      return v
     })
-
-    // Pick a continuous rotation track: clamp the first sample to [-90, 90] so
-    // the bus starts upright, then for every subsequent sample choose the
-    // variant of (raw, raw-180, raw+180) closest to the previous value. This
-    // means a brief tangent excursion across 90° doesn't snap the bus 180° —
-    // it just continues from where it was. The bus may briefly lean slightly
-    // past 90° on west-bound stretches, but that reads as natural tilt rather
-    // than a flicker.
-    const rotates: number[] = []
-    let first = raw[0]
-    if (first > 90) first -= 180
-    else if (first < -90) first += 180
-    rotates.push(first)
-    for (let i = 1; i < N; i++) {
-      const r = raw[i]
-      const prev = rotates[i - 1]
-      const variants = [r, r - 180, r + 180]
-      let best = variants[0]
-      let bestDist = Math.abs(variants[0] - prev)
-      for (let v = 1; v < variants.length; v++) {
-        const d = Math.abs(variants[v] - prev)
-        if (d < bestDist) {
-          best = variants[v]
-          bestDist = d
-        }
-      }
-      rotates.push(best)
-    }
 
     let frameId = 0
     const startTime = performance.now()
@@ -1114,7 +1176,7 @@ function BusMarker({
         wrapperRef.current.style.top = `${cy}%`
       }
       if (rotateRef.current) {
-        rotateRef.current.style.transform = `rotate(${deg}deg)`
+        rotateRef.current.style.transform = `scaleX(${legFlip}) rotate(${deg}deg)`
       }
     }
     apply(points[0][0], points[0][1], rotates[0])
@@ -1168,11 +1230,12 @@ function BusMarker({
 // ─── Start screen ───────────────────────────────────────────────────────────
 
 function StartScreen({
-  puzzle, onStart, viewport,
+  puzzle, onStart, viewport, polylines,
 }: {
   puzzle: typeof FALLBACK_PUZZLE
   onStart: () => void
   viewport: MapViewport
+  polylines?: LegPolyline[]
 }) {
   const numQuestions = puzzle.cities.filter(c => c.questions.length > 0).length
   const start = puzzle.cities[0]
@@ -1187,7 +1250,7 @@ function StartScreen({
     >
       {/* Today's journey title — above the map */}
       <div className="rounded-2xl border bg-teal-900/95 border-teal-700/60 px-4 py-2.5 sm:px-5 sm:py-3 text-center">
-        <h2 className="text-2xl sm:text-3xl font-bold text-teal-50">Today's journey</h2>
+        <h2 className="text-2xl sm:text-3xl font-bold text-teal-50">Today's journey · {puzzle.destination}</h2>
         <p className="text-teal-300 text-xs sm:text-sm mt-0.5">{numQuestions} questions · 3 lives</p>
       </div>
 
@@ -1195,6 +1258,7 @@ function StartScreen({
       <RouteMap
         points={puzzle.cities.map(c => ({ name: c.name, lat: c.lat, lng: c.lng }))}
         viewport={viewport}
+        polylines={polylines}
         className="w-full rounded-2xl border border-teal-700/40 bg-teal-950/40"
       />
 
@@ -1225,7 +1289,7 @@ function StartScreen({
 // ─── Question screen ────────────────────────────────────────────────────────
 
 function QuestionScreen({
-  puzzle, cityIndex, totalCities, arrivedAt, advancing, question, onAnswer, onBusArrive, onNext,
+  puzzle, cityIndex, totalCities, arrivedAt, advancing, question, onAnswer, onBusArrive, onNext, polylines,
 }: {
   puzzle: typeof FALLBACK_PUZZLE
   cityIndex: number
@@ -1236,6 +1300,7 @@ function QuestionScreen({
   onAnswer: (correct: boolean) => void
   onBusArrive: () => void
   onNext: () => void
+  polylines?: LegPolyline[]
 }) {
   // Index of the correct pick once the user gets it right (locks the answer).
   const [pickedCorrect, setPickedCorrect] = useState<number | null>(null)
@@ -1326,6 +1391,7 @@ function QuestionScreen({
           reachedCount={advancing ? arrivedAt + 1 : arrivedAt}
           arrivedAt={arrivedAt}
           onArrive={onBusArrive}
+          polylines={polylines}
           className="w-full rounded-2xl border border-teal-700/40 bg-teal-950/40"
         />
 
@@ -1414,6 +1480,44 @@ function QuestionScreen({
   )
 }
 
+/** Viewport framing every city in the route, with comfortable padding.
+ *  Used for the opening shot — the page starts at the full-continent default
+ *  viewport, then animates to this tighter route-fit so the user sees the
+ *  geographic context before zooming in on the journey. */
+function routeViewport(cities: { lat: number; lng: number }[]): MapViewport {
+  if (cities.length === 0) return MAP_DEFAULT_VIEWPORT
+  const projected = cities.map(c => projectLatLngPct(c.lat, c.lng))
+  let left = Math.min(...projected.map(p => p.left))
+  let right = Math.max(...projected.map(p => p.left))
+  let top = Math.min(...projected.map(p => p.top))
+  let bottom = Math.max(...projected.map(p => p.top))
+  // ~3° real-world padding around the route bbox so labels + the bus marker
+  // have room without bumping up against the frame.
+  const lngRange = MAP_GEO.right - MAP_GEO.left
+  const latRange = MAP_GEO.top - MAP_GEO.bottom
+  const padX = (3 / lngRange) * 100
+  const padY = (3 / latRange) * 100
+  left -= padX; right += padX
+  top -= padY; bottom += padY
+  let w = right - left
+  let h = bottom - top
+  // Match the on-screen aspect of MAP_DEFAULT_VIEWPORT so the map container
+  // (and its surrounding layout) doesn't reflow during the zoom-in tween.
+  const TARGET_ASPECT = (MAP_DEFAULT_VIEWPORT.width * MAP_W_PX) / (MAP_DEFAULT_VIEWPORT.height * MAP_H_PX)
+  const currentAspect = (w * MAP_W_PX) / (h * MAP_H_PX)
+  if (currentAspect > TARGET_ASPECT) h = (w * MAP_W_PX) / (TARGET_ASPECT * MAP_H_PX)
+  else if (currentAspect < TARGET_ASPECT) w = (TARGET_ASPECT * h * MAP_H_PX) / MAP_W_PX
+  const cx = (left + right) / 2
+  const cy = (top + bottom) / 2
+  let nl = cx - w / 2
+  let nt = cy - h / 2
+  if (w >= 100) nl = (100 - w) / 2
+  else nl = Math.max(0, Math.min(100 - w, nl))
+  if (h >= 100) nt = (100 - h) / 2
+  else nt = Math.max(0, Math.min(100 - h, nt))
+  return { left: nl, top: nt, width: w, height: h }
+}
+
 /** Viewport framing two consecutive route points with comfortable padding.
  *  The result is expanded to a fixed on-screen aspect ratio so the rendered
  *  map container is the same size for every leg (no jump between cities). */
@@ -1439,19 +1543,19 @@ function cityLegViewport(a: RoutePoint, b: RoutePoint): MapViewport {
   const minH = (5.5 / latRange) * 100
   let w = Math.max(right - left, minW)
   let h = Math.max(bottom - top, minH)
-  // Lock to the same on-screen aspect as the start-screen MAP_DEFAULT_VIEWPORT, so the
-  // map container is identical across the start screen and every leg.
-  const MAP_W = 3344, MAP_H = 1880
-  const TARGET_ASPECT = (MAP_DEFAULT_VIEWPORT.width * MAP_W) / (MAP_DEFAULT_VIEWPORT.height * MAP_H)
-  // currentAspect_screen = (w * MAP_W) / (h * MAP_H)
-  // Want this == TARGET_ASPECT, so adjust w or h.
-  const currentAspect = (w * MAP_W) / (h * MAP_H)
+  // Lock to the same on-screen aspect as the start-screen MAP_DEFAULT_VIEWPORT,
+  // so the map container is identical across the start screen and every leg.
+  // Aspect is in image-pixel space — use the live MAP_W_PX/MAP_H_PX of the
+  // current basemap (continent rasters vary widely: Africa 1:1, Asia 1.72:1,
+  // Europe 1.97:1, etc.) instead of hardcoding.
+  const TARGET_ASPECT = (MAP_DEFAULT_VIEWPORT.width * MAP_W_PX) / (MAP_DEFAULT_VIEWPORT.height * MAP_H_PX)
+  const currentAspect = (w * MAP_W_PX) / (h * MAP_H_PX)
   if (currentAspect > TARGET_ASPECT) {
     // Too wide — expand height.
-    h = (w * MAP_W) / (TARGET_ASPECT * MAP_H)
+    h = (w * MAP_W_PX) / (TARGET_ASPECT * MAP_H_PX)
   } else if (currentAspect < TARGET_ASPECT) {
     // Too tall — expand width.
-    w = (TARGET_ASPECT * h * MAP_H) / MAP_W
+    w = (TARGET_ASPECT * h * MAP_H_PX) / MAP_W_PX
   }
   const cx = (left + right) / 2
   const cy = (top + bottom) / 2
@@ -1478,7 +1582,7 @@ function Heart({ filled }: { filled: boolean }) {
 // ─── End screen ─────────────────────────────────────────────────────────────
 
 function EndScreen({
-  puzzle, won, lives, attempts, onShare, viewport,
+  puzzle, won, lives, attempts, onShare, viewport, polylines,
 }: {
   puzzle: typeof FALLBACK_PUZZLE
   won: boolean
@@ -1486,6 +1590,7 @@ function EndScreen({
   attempts: Attempt[]
   onShare: () => void
   viewport: MapViewport
+  polylines?: LegPolyline[]
 }) {
   return (
     <motion.div
@@ -1515,6 +1620,7 @@ function EndScreen({
             : Math.max(0, attempts.filter(a => a.correct).length)
         }
         viewport={viewport}
+        polylines={polylines}
         className="w-full max-w-xs mx-auto rounded-2xl border border-teal-700/40 bg-teal-950/40"
       />
 
@@ -1655,7 +1761,7 @@ function buildShareText(
     puzzle.international
       ? `${start.flag} ${start.name} → ${end.name} ${end.flag}`
       : `${start.name} → ${end.name}`,
-    won ? `Made it! ${reached}/${questionedCities.length} ${heart}` : `Stranded at city ${reached + 1}/${questionedCities.length} 🤍🤍🤍`,
+    won ? `Made it! ${reached}/${questionedCities.length} ${heart}` : `Stranded at city ${reached}/${questionedCities.length} 🤍🤍🤍`,
     "",
     ...puzzle.cities
       .map((c, i) => ({ c, i }))
