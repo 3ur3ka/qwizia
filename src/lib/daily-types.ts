@@ -33,6 +33,13 @@ export type DailyTheme = {
 
 export type DailyPolyline = [number, number][]
 
+/** Country outline: list of [lng,lat] rings, one per disconnected landmass.
+ *  Drawn under the route to give players a hint of where they are. */
+export type DailyBorder = {
+  country: string
+  rings: [number, number][][]
+}
+
 export type DailyRegion =
   | "british-isles"
   | "europe"
@@ -119,6 +126,7 @@ export type DailyPayload = {
   theme: DailyTheme
   cities: DailyCity[]
   polylines: DailyPolyline[]
+  borders?: DailyBorder[]
   generatedAt: number
 }
 

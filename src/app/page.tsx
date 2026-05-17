@@ -215,6 +215,9 @@ export default function DailyPage() {
   // them directly and skips the live OSRM lookup — avoids 5 round-trips to a
   // public demo API on every cold pageload.
   const [polylines, setPolylines] = useState<LegPolyline[] | null>(null)
+  // Server-supplied country borders for the destination, drawn under the
+  // route. Optional — older payloads (and the fallback puzzle) won't have it.
+  const [borders, setBorders] = useState<{ rings: [number, number][][] }[] | null>(null)
   useEffect(() => {
     let cancelled = false
     // Optional ?date=YYYY-MM-DD URL param so the proxy can fetch a future-
@@ -250,6 +253,9 @@ export default function DailyPage() {
         // need to.
         if (Array.isArray(payload.polylines)) {
           setPolylines(payload.polylines as LegPolyline[])
+        }
+        if (Array.isArray(payload.borders)) {
+          setBorders(payload.borders as { rings: [number, number][][] }[])
         }
         // Ignore payload.theme.crop — it was computed by squabblebox against
         // the old shared world raster, so its %-coords don't map to the new
@@ -371,6 +377,7 @@ export default function DailyPage() {
                 onStart={start}
                 viewport={viewport}
                 polylines={polylines ?? undefined}
+                borders={borders ?? undefined}
               />
             )}
             {status === "playing" && (
@@ -386,6 +393,7 @@ export default function DailyPage() {
                 onBusArrive={onBusArrive}
                 onNext={onNext}
                 polylines={polylines ?? undefined}
+                borders={borders ?? undefined}
               />
             )}
             {(status === "won" || status === "lost") && (
@@ -398,6 +406,7 @@ export default function DailyPage() {
                 onShare={() => setShowShare(true)}
                 viewport={viewport}
                 polylines={polylines ?? undefined}
+                borders={borders ?? undefined}
               />
             )}
           </AnimatePresence>
@@ -758,6 +767,7 @@ function RouteMap({
   className,
   viewport = MAP_DEFAULT_VIEWPORT,
   polylines,
+  borders,
 }: {
   points: RoutePoint[]
   /** Where the bus should end up. If undefined, no bus. */
@@ -771,6 +781,8 @@ function RouteMap({
   /** Server-supplied road polylines (one per leg). When present we skip the
    *  live OSRM lookup entirely. */
   polylines?: LegPolyline[]
+  /** Country outlines for the destination, drawn beneath the route. */
+  borders?: { rings: [number, number][][] }[]
 }) {
   const targetVp = viewport
   const arrivedAt = arrivedAtProp ?? reachedCount ?? 0
@@ -809,6 +821,27 @@ function RouteMap({
     [points]
   )
   const legPathDs = useMemo(() => legs.map(leg => legPathD(leg)), [legs])
+
+  // Border path Ds in map-px coords. Each ring becomes one closed sub-path so
+  // multipolygon countries (islands, etc.) render as a single SVG path.
+  const borderPathD = useMemo(() => {
+    if (!borders || borders.length === 0) return ""
+    const parts: string[] = []
+    for (const b of borders) {
+      for (const ring of b.rings) {
+        if (ring.length < 2) continue
+        const segs: string[] = []
+        for (let i = 0; i < ring.length; i++) {
+          const [lng, lat] = ring[i]
+          const [x, y] = projectMapPx(lat, lng)
+          segs.push(`${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`)
+        }
+        segs.push("Z")
+        parts.push(segs.join(" "))
+      }
+    }
+    return parts.join(" ")
+  }, [borders])
 
   // Smoothed sample path for the bus's currently-driving leg.
   const animatingLegPoints = useMemo(() => {
@@ -929,6 +962,20 @@ function RouteMap({
           preserveAspectRatio="none"
         />
         <rect x={0} y={0} width={MAP_W_PX} height={MAP_H_PX} fill="rgba(15,76,76,0.10)" />
+
+        {/* Country border — soft amber outline with a faint tint, sits between
+            the basemap and the route. Drawn as a single multi-subpath so even
+            archipelago countries render with one stroke. */}
+        {borderPathD && (
+          <path
+            d={borderPathD}
+            fill="rgba(251,191,36,0.10)"
+            stroke="rgba(251,191,36,0.85)"
+            strokeWidth={1.5}
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
 
         {/* Roads — wrapped in a fading group so they appear softly once the
             real OSRM polylines have arrived (no straight-line flash). */}
@@ -1230,12 +1277,13 @@ function BusMarker({
 // ─── Start screen ───────────────────────────────────────────────────────────
 
 function StartScreen({
-  puzzle, onStart, viewport, polylines,
+  puzzle, onStart, viewport, polylines, borders,
 }: {
   puzzle: typeof FALLBACK_PUZZLE
   onStart: () => void
   viewport: MapViewport
   polylines?: LegPolyline[]
+  borders?: { rings: [number, number][][] }[]
 }) {
   const numQuestions = puzzle.cities.filter(c => c.questions.length > 0).length
   const start = puzzle.cities[0]
@@ -1259,6 +1307,7 @@ function StartScreen({
         points={puzzle.cities.map(c => ({ name: c.name, lat: c.lat, lng: c.lng }))}
         viewport={viewport}
         polylines={polylines}
+        borders={borders}
         className="w-full rounded-2xl border border-teal-700/40 bg-teal-950/40"
       />
 
@@ -1289,7 +1338,7 @@ function StartScreen({
 // ─── Question screen ────────────────────────────────────────────────────────
 
 function QuestionScreen({
-  puzzle, cityIndex, totalCities, arrivedAt, advancing, question, onAnswer, onBusArrive, onNext, polylines,
+  puzzle, cityIndex, totalCities, arrivedAt, advancing, question, onAnswer, onBusArrive, onNext, polylines, borders,
 }: {
   puzzle: typeof FALLBACK_PUZZLE
   cityIndex: number
@@ -1301,6 +1350,7 @@ function QuestionScreen({
   onBusArrive: () => void
   onNext: () => void
   polylines?: LegPolyline[]
+  borders?: { rings: [number, number][][] }[]
 }) {
   // Index of the correct pick once the user gets it right (locks the answer).
   const [pickedCorrect, setPickedCorrect] = useState<number | null>(null)
@@ -1392,6 +1442,7 @@ function QuestionScreen({
           arrivedAt={arrivedAt}
           onArrive={onBusArrive}
           polylines={polylines}
+          borders={borders}
           className="w-full rounded-2xl border border-teal-700/40 bg-teal-950/40"
         />
 
@@ -1582,7 +1633,7 @@ function Heart({ filled }: { filled: boolean }) {
 // ─── End screen ─────────────────────────────────────────────────────────────
 
 function EndScreen({
-  puzzle, won, lives, attempts, onShare, viewport, polylines,
+  puzzle, won, lives, attempts, onShare, viewport, polylines, borders,
 }: {
   puzzle: typeof FALLBACK_PUZZLE
   won: boolean
@@ -1591,6 +1642,7 @@ function EndScreen({
   onShare: () => void
   viewport: MapViewport
   polylines?: LegPolyline[]
+  borders?: { rings: [number, number][][] }[]
 }) {
   return (
     <motion.div
@@ -1621,6 +1673,7 @@ function EndScreen({
         }
         viewport={viewport}
         polylines={polylines}
+        borders={borders}
         className="w-full max-w-xs mx-auto rounded-2xl border border-teal-700/40 bg-teal-950/40"
       />
 
