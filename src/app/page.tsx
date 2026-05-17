@@ -1040,6 +1040,9 @@ function RouteMap({
     }
 
     const onPointerDown = (e: PointerEvent) => {
+      // Let the overlay controls (zoom buttons, attribution link) receive
+      // their own click — don't capture the pointer for pan/pinch.
+      if ((e.target as Element | null)?.closest("button, a")) return
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
       el.setPointerCapture(e.pointerId)
       tweenCancelRef.current?.()
